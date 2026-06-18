@@ -23,7 +23,7 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 public class JwtTokenProvider {
-    @Value("${jwt.access-expiration}")
+    @Value("${jwt.expiration}")
     private Long accessTokenExpiration;
     @Value("${jwt.refresh-expiration}")
     private Long refreshTokenExpiration;
