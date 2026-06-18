@@ -8,7 +8,6 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.hibernate.validator.constraints.UniqueElements;
 import ru.bank.auth_service.model.enumerate.Role;
 import ru.bank.auth_service.model.enumerate.UserStatus;
 
@@ -29,11 +28,11 @@ public class Users {
     @Size(max = 100, message = "Максимально допустимое значение lastName 100")
     private String lastName;
     @NotNull(message = "phoneNumber не может быть пустым")
-    @UniqueElements(message = "phoneNumber должен быть уникальным")
+    @Column(unique = true)
     private String phoneNumber;
     @Email(message = "Ошибка в формате Email")
     @NotNull(message = "Email не может быть пустым")
-    @UniqueElements(message = "Email должен быть уникальным")
+    @Column(unique = true)
     private String email;
     @NotNull(message = "Password не может быть пустым")
     @Size(min = 10, max = 100, message =
