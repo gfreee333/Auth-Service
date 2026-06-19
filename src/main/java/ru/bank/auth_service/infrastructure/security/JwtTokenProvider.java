@@ -1,4 +1,4 @@
-package ru.bank.auth_service.infrastructure;
+package ru.bank.auth_service.infrastructure.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -122,9 +122,9 @@ public class JwtTokenProvider {
         return validateToken(token).getSubject();
     }
 
-    // todo: Извлечение phoneNumber из токена
-    public String getPhoneNumberFromToken(String token){
-        return validateToken(token).get("phoneNumber", String.class);
+    // todo: Извлечение статуса
+    public String getUserStatusFromToken(String token){
+        return validateToken(token).get("status", String.class);
     }
 
 }

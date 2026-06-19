@@ -1,4 +1,4 @@
-package ru.bank.auth_service.infrastructure;
+package ru.bank.auth_service.infrastructure.redis;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
