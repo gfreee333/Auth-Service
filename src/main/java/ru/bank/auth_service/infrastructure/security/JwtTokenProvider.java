@@ -35,12 +35,13 @@ public class JwtTokenProvider {
     private PublicKey publicKey;
 
     @PostConstruct
-    public void init() throws Exception{
+    public void init() throws Exception {
         this.privateKey = loadPrivateKey();
         this.publicKey = loadPublicKey();
     }
+
     // todo: Загружаем закрытый ключ для подписи токена
-    public PrivateKey loadPrivateKey() throws Exception{
+    public PrivateKey loadPrivateKey() throws Exception {
         String keyContent = new String(
                 new ClassPathResource(privateKeyPath).getInputStream().readAllBytes(),
                 StandardCharsets.UTF_8
@@ -71,8 +72,9 @@ public class JwtTokenProvider {
         KeyFactory keyFactory = KeyFactory.getInstance("RSA");
         return keyFactory.generatePublic(keySpec);
     }
+
     // todo: Создание builder для jwt токенов
-    private String buildToken(String email, UUID userId, Role role, UserStatus status, String phoneNumber, Long expiration){
+    private String buildToken(String email, UUID userId, Role role, UserStatus status, String phoneNumber, Long expiration) {
         return Jwts.builder()
                 .subject(email)
                 .claim("userId", userId)
@@ -84,25 +86,45 @@ public class JwtTokenProvider {
                 .signWith(privateKey, Jwts.SIG.RS256)
                 .compact();
     }
+
     // todo: Генерация долгоживущего токена
-    public String generatedRefreshToken(String email, UUID userId, Role role, UserStatus status, String phoneNumber){
+    public String generatedRefreshToken(String email, UUID userId, Role role, UserStatus status, String phoneNumber) {
         return buildToken(email, userId, role, status, phoneNumber, accessTokenExpiration);
     }
+
     // todo: Генерация временного токена
-    public String generatedAccessToken(String email, UUID userId, Role role, UserStatus status, String phoneNumber){
+    public String generatedAccessToken(String email, UUID userId, Role role, UserStatus status, String phoneNumber) {
         return buildToken(email, userId, role, status, phoneNumber, refreshTokenExpiration);
     }
+
     // todo: Проверка валидности токена
-    public Claims validateToken(String token){
+    public Claims validateToken(String token) {
         return Jwts.parser()
                 .verifyWith(publicKey)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
     }
+
     // todo: Получение остатка времени жизни токена
-    public Long getExpirationFromToken(String token){
+    public Long getExpirationFromToken(String token) {
         Date expiration = validateToken(token).getExpiration();
         return expiration.getTime() - System.currentTimeMillis();
     }
+
+    // todo: Извлечение role из токена
+    public String getRoleFromToken(String token){
+        return validateToken(token).get("role", String.class);
+    }
+
+    // todo: Извлечение email из токена
+    public String getEmailFromToken(String token){
+        return validateToken(token).getSubject();
+    }
+
+    // todo: Извлечение phoneNumber из токена
+    public String getPhoneNumberFromToken(String token){
+        return validateToken(token).get("phoneNumber", String.class);
+    }
+
 }
