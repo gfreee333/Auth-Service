@@ -1,7 +1,10 @@
 package ru.bank.auth_service.model.dto.response;
 
-import ru.bank.auth_service.model.enumerate.Role;
+import java.util.UUID;
 
 public record LoginResponseDto(
-        String message
+        String message,
+        UUID userId,
+        String role,
+        boolean firstLogin
 ){}

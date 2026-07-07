@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
+import ru.bank.auth_service.model.entity.Users;
 import ru.bank.auth_service.model.enumerate.Role;
 import ru.bank.auth_service.model.enumerate.UserStatus;
 
@@ -74,13 +75,13 @@ public class JwtTokenProvider {
     }
 
     // todo: Создание builder для jwt токенов
-    private String buildToken(String email, UUID userId, Role role, UserStatus status, String phoneNumber, Long expiration) {
+    private String buildToken(Users user, Long expiration) {
         return Jwts.builder()
-                .subject(email)
-                .claim("userId", userId)
-                .claim("role", role)
-                .claim("status", status)
-                .claim("phoneNumber", phoneNumber)
+                .subject(user.getEmail())
+                .claim("userId", user.getId())
+                .claim("role", user.getRole())
+                .claim("status", user.getStatus())
+                .claim("phoneNumber", user.getPhoneNumber())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(privateKey, Jwts.SIG.RS256)
@@ -88,13 +89,13 @@ public class JwtTokenProvider {
     }
 
     // todo: Генерация долгоживущего токена
-    public String generatedRefreshToken(String email, UUID userId, Role role, UserStatus status, String phoneNumber) {
-        return buildToken(email, userId, role, status, phoneNumber, accessTokenExpiration);
+    public String generatedRefreshToken(Users user){
+        return buildToken(user, refreshTokenExpiration);
     }
 
     // todo: Генерация временного токена
-    public String generatedAccessToken(String email, UUID userId, Role role, UserStatus status, String phoneNumber) {
-        return buildToken(email, userId, role, status, phoneNumber, refreshTokenExpiration);
+    public String generatedAccessToken(Users user) {
+        return buildToken(user, accessTokenExpiration);
     }
 
     // todo: Проверка валидности токена
