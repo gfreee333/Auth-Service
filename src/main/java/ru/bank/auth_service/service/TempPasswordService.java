@@ -10,6 +10,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class TempPasswordService {
+
     private final RedisTemplate<String, String> redisTemplate;
     private static final String KEY_PREFIX = "generated:password:";
 
