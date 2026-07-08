@@ -1,4 +1,4 @@
-package ru.bank.auth_service.infrastructure.admin;
+package ru.bank.auth_service.infrastructure.init;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -7,8 +7,8 @@ import org.springframework.context.event.EventListener;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import ru.bank.auth_service.model.entity.Users;
-import ru.bank.auth_service.model.enumerate.Role;
-import ru.bank.auth_service.model.enumerate.UserStatus;
+import ru.bank.auth_service.model.enums.Role;
+import ru.bank.auth_service.model.enums.UserStatus;
 import ru.bank.auth_service.repository.UsersRepository;
 
 import java.util.UUID;
@@ -17,6 +17,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Slf4j
 public class AdminInitializer {
+
     private final UsersRepository usersRepository;
     private final PasswordEncoder passwordEncoder;
 

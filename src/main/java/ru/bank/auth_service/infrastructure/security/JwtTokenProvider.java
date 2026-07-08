@@ -4,11 +4,12 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
-import ru.bank.auth_service.model.enumerate.Role;
-import ru.bank.auth_service.model.enumerate.UserStatus;
+import ru.bank.auth_service.exception.custom.auth.AuthException;
+import ru.bank.auth_service.model.entity.Users;
 
 import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
@@ -22,7 +23,9 @@ import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class JwtTokenProvider {
+
     @Value("${jwt.expiration}")
     private Long accessTokenExpiration;
     @Value("${jwt.refresh-expiration}")
@@ -74,13 +77,15 @@ public class JwtTokenProvider {
     }
 
     // todo: Создание builder для jwt токенов
-    private String buildToken(String email, UUID userId, Role role, UserStatus status, String phoneNumber, Long expiration) {
+    private String buildToken(Users user, Long expiration) {
+        String sessionId = UUID.randomUUID().toString();
         return Jwts.builder()
-                .subject(email)
-                .claim("userId", userId)
-                .claim("role", role)
-                .claim("status", status)
-                .claim("phoneNumber", phoneNumber)
+                .subject(user.getEmail())
+                .claim("userId", user.getId())
+                .claim("sessionId", sessionId)
+                .claim("role", user.getRole())
+                .claim("status", user.getStatus())
+                .claim("phoneNumber", user.getPhoneNumber())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(privateKey, Jwts.SIG.RS256)
@@ -88,13 +93,13 @@ public class JwtTokenProvider {
     }
 
     // todo: Генерация долгоживущего токена
-    public String generatedRefreshToken(String email, UUID userId, Role role, UserStatus status, String phoneNumber) {
-        return buildToken(email, userId, role, status, phoneNumber, accessTokenExpiration);
+    public String generatedRefreshToken(Users user){
+        return buildToken(user, refreshTokenExpiration);
     }
 
     // todo: Генерация временного токена
-    public String generatedAccessToken(String email, UUID userId, Role role, UserStatus status, String phoneNumber) {
-        return buildToken(email, userId, role, status, phoneNumber, refreshTokenExpiration);
+    public String generatedAccessToken(Users user) {
+        return buildToken(user, accessTokenExpiration);
     }
 
     // todo: Проверка валидности токена
@@ -106,25 +111,76 @@ public class JwtTokenProvider {
                 .getPayload();
     }
 
+    // todo: Метод для проверки валидности токена
+    public boolean isValidToken(String token){
+        try {
+            validateToken(token);
+            return true;
+        }catch (Exception ex){
+            log.debug("Невалидный токен: {}", ex.getMessage());
+            return false;
+        }
+    }
+
     // todo: Получение остатка времени жизни токена
     public Long getExpirationFromToken(String token) {
-        Date expiration = validateToken(token).getExpiration();
-        return expiration.getTime() - System.currentTimeMillis();
+            Date expiration = validateToken(token).getExpiration();
+            return expiration.getTime() - System.currentTimeMillis();
+    }
+
+    // todo: Извлечение sessionId из токена
+    public String getSessionIdFromToken(String token){
+        String sessionId = validateToken(token).get("sessionId", String.class);
+        if(sessionId == null){
+            log.error("Ошибка извлечения sessionId из токена");
+            throw new AuthException("sessionId не найден в токене");
+        }
+        return sessionId;
+    }
+
+    // todo: Извлечение userId из токена
+    public UUID getUserIdFromToken(String token){
+        String userIdStr = validateToken(token).get("userId", String.class);
+        if(userIdStr == null){
+            log.error("Ошибка извлечения userId из токена");
+            throw new AuthException("userId не найден в токене");
+        }
+        try{
+            return UUID.fromString(userIdStr);
+        } catch (IllegalArgumentException ex){
+            log.error("Ошибка извлечения userId из токена: {}", ex.getMessage());
+            throw new AuthException("Неверный формат userId в токене");
+        }
     }
 
     // todo: Извлечение role из токена
     public String getRoleFromToken(String token){
-        return validateToken(token).get("role", String.class);
+        String role = validateToken(token).get("role", String.class);
+        if(role == null){
+             log.error("Ошибка извлечения role из токена");
+             throw new AuthException("Role не найдена в токене");
+        }
+        return role;
     }
 
     // todo: Извлечение email из токена
     public String getEmailFromToken(String token){
-        return validateToken(token).getSubject();
+        String email = validateToken(token).getSubject();
+        if(email == null){
+            log.error("Ошибка извлечения Email из токена");
+            throw new AuthException("Email не найден в токене");
+        }
+        return email;
     }
 
     // todo: Извлечение статуса
     public String getUserStatusFromToken(String token){
-        return validateToken(token).get("status", String.class);
+        String status = validateToken(token).get("status", String.class);
+        if(status == null){
+            log.error("Ошибка извлечения status из токена");
+            throw new AuthException("Status не найден в токене");
+        }
+        return status;
     }
 
 }

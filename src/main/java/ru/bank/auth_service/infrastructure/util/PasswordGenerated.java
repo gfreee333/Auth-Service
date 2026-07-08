@@ -1,4 +1,4 @@
-package ru.bank.auth_service.infrastructure.generated;
+package ru.bank.auth_service.infrastructure.util;
 
 import org.springframework.stereotype.Component;
 
@@ -6,6 +6,7 @@ import java.security.SecureRandom;
 
 @Component
 public class PasswordGenerated {
+
     private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*";
     private static final int LENGTH = 12;
 
