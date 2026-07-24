@@ -25,18 +25,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> clientInBlackListHandler(ClientInBlackListException ex){
         ErrorResponse error = new ErrorResponse(
                 ex.getMessage(),
-                HttpStatus.UNAUTHORIZED.value()
+                HttpStatus.FORBIDDEN.value()
         );
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 
     @ExceptionHandler(ClientTypeNotSupportedException.class)
     public ResponseEntity<ErrorResponse> clientTypeNotSupportedHandler(ClientTypeNotSupportedException ex){
         ErrorResponse error = new ErrorResponse(
                 ex.getMessage(),
-                HttpStatus.FORBIDDEN.value()
+                HttpStatus.UNAUTHORIZED.value()
         );
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
 
 }

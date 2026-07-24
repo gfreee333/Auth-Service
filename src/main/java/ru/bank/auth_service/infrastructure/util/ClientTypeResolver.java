@@ -40,7 +40,7 @@ public class ClientTypeResolver {
                 || ua.contains("firefox/")
                 || ua.contains("edge/")
                 || ua.contains("opera/")
-                || ua.contains("yandex/")
+                || ua.contains("YaBrowser/")
                 || ua.contains("safari/");
     }
 
