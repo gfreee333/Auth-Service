@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.bank.auth_service.exception.custom.auth.AuthException;
 import ru.bank.auth_service.exception.custom.auth.ClientTypeNotSupportedException;
+import ru.bank.auth_service.exception.custom.auth.UnsupportedIdentifierException;
 import ru.bank.auth_service.model.dto.request.LoginRequestDto;
 
 import java.util.List;
@@ -20,6 +21,7 @@ public class LoginProcessorFactory {
         return strategies.stream()
                 .filter(s -> s.supports(request))
                 .findFirst()
-                .orElseThrow(() -> new ClientTypeNotSupportedException("Данный способ аутентификации не поддерживается"));
+                .orElseThrow(() -> new UnsupportedIdentifierException("Неверный формат идентификатора. " +
+                        "Используйте email: try@email.com / phone: +7XXXXXXXXXX"));
     }
 }

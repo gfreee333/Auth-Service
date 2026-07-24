@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import ru.bank.auth_service.exception.custom.auth.ClientInBlackListException;
 import ru.bank.auth_service.exception.custom.auth.ClientTypeNotSupportedException;
+import ru.bank.auth_service.exception.custom.auth.UnsupportedIdentifierException;
 import ru.bank.auth_service.exception.response.ErrorResponse;
 import ru.bank.auth_service.exception.custom.auth.AuthException;
 
@@ -32,6 +33,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ClientTypeNotSupportedException.class)
     public ResponseEntity<ErrorResponse> clientTypeNotSupportedHandler(ClientTypeNotSupportedException ex){
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage(),
+                HttpStatus.UNAUTHORIZED.value()
+        );
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
+    @ExceptionHandler(UnsupportedIdentifierException.class)
+    public ResponseEntity<ErrorResponse> unsupportedIdentifierHandler(UnsupportedIdentifierException ex){
         ErrorResponse error = new ErrorResponse(
                 ex.getMessage(),
                 HttpStatus.UNAUTHORIZED.value()
