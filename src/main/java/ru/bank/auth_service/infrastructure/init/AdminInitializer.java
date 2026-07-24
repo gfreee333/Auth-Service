@@ -31,7 +31,7 @@ public class AdminInitializer {
                     .phoneNumber("+70000000000")
                     .password(passwordEncoder.encode("Admin123"))
                     .role(Role.ADMIN)
-                    .status(UserStatus.ACTIVE)
+                    .status(UserStatus.PENDING)
                     .createdBy(UUID.randomUUID())
                     .build();
             usersRepository.save(admin);

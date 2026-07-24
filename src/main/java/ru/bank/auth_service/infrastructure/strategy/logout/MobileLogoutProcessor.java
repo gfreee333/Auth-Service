@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import ru.bank.auth_service.model.dto.response.TokenPair;
 import ru.bank.auth_service.model.enums.ClientType;
 
 @Component
@@ -13,7 +14,7 @@ import ru.bank.auth_service.model.enums.ClientType;
 public class MobileLogoutProcessor implements LogoutProcessorStrategy{
 
     @Override
-    public LogoutTokens extractTokens(HttpServletRequest request) {
+    public TokenPair extractTokens(HttpServletRequest request) {
         String accessToken = null;
         String authHeader = request.getHeader("Authorization");
         if(authHeader != null && authHeader.startsWith("Bearer ")){
@@ -21,7 +22,7 @@ public class MobileLogoutProcessor implements LogoutProcessorStrategy{
         }
         String refreshToken = request.getHeader("X-Refresh-Token");
         log.debug("Токены для Mobile клиента получены");
-        return new LogoutTokens(accessToken, refreshToken);
+        return new TokenPair(accessToken, refreshToken);
     }
 
     @Override

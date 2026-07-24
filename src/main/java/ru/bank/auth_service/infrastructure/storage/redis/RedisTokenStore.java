@@ -16,39 +16,28 @@ public class RedisTokenStore {
 
     private final StringRedisTemplate redisTemplate;
     private static final String REFRESH_USER_PREFIX = "refresh:user:";
-    private static final String REFRESH_PREFIX = "refresh:";
     private static final String ACCESS_BLACK_LIST_PREFIX = "accessBlackList:";
 
     // todo: Сохранение в Redis Refresh токена
     public void saveRefreshToken(UUID userId, String sessionId, String refreshToken, long ttl) {
-        String userKey = REFRESH_USER_PREFIX + userId + ":" + sessionId;
-        String tokenKey = REFRESH_PREFIX + refreshToken;
+        String userKey = REFRESH_USER_PREFIX + userId + ":session:" + sessionId;
         redisTemplate.opsForValue().set(userKey, refreshToken, Duration.ofMillis(ttl));
-        redisTemplate.opsForValue().set(tokenKey, userId + ":" + sessionId, Duration.ofMillis(ttl));
         log.debug("Refresh token сохранен для пользователя: {}, сессия: {}", userId, sessionId);
     }
 
     // todo: Удаление долгоживущего токена
     public void deleteRefreshToken(UUID userId, String sessionId, String refreshToken) {
-        String userKey = REFRESH_USER_PREFIX + userId + ":" + sessionId;
-        String tokenKey = REFRESH_PREFIX + refreshToken;
+        String userKey = REFRESH_USER_PREFIX + userId + ":session:" + sessionId;
         redisTemplate.delete(userKey);
-        redisTemplate.delete(tokenKey);
         log.debug("Refresh token удален для пользователя: {}, сессия: {}", userId, sessionId);
     }
 
     // todo: Удаление всех Refresh token пользователя
     public void deleteAllRefreshToken(UUID userId) {
-        String pattern = REFRESH_USER_PREFIX + userId + ":";
+        String pattern = REFRESH_USER_PREFIX + userId + ":session:";
         Set<String> userKeys = redisTemplate.keys(pattern);
         if (userKeys != null && !userKeys.isEmpty()) {
-            for (String userKey : userKeys){
-                String refreshToken = redisTemplate.opsForValue().get(userKey);
-                if(refreshToken != null){
-                    redisTemplate.delete(REFRESH_PREFIX + refreshToken);
-                }
-                redisTemplate.delete(userKey);
-            }
+            redisTemplate.delete(userKeys);
             log.info("Все refresh tokens удалены у пользователя");
         } else {
             log.debug("Нет активных сессий для пользователя: {}", userId);
@@ -57,7 +46,7 @@ public class RedisTokenStore {
 
     // todo: Проверка принадлежности токена пользователю + session
     public boolean validateRefreshToken(UUID userId, String sessionId, String refreshToken) {
-        String userKey = REFRESH_USER_PREFIX + userId + ":" + sessionId;
+        String userKey = REFRESH_USER_PREFIX + userId + ":session:" + sessionId;
         String storedToken = redisTemplate.opsForValue().get(userKey);
         if(storedToken == null){
             log.debug("Refresh токен не найден для пользователя: {}, сессия: {}", userId, sessionId);

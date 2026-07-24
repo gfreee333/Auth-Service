@@ -2,6 +2,7 @@ package ru.bank.auth_service.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +29,7 @@ public class RegistrationService {
     private final TempPasswordService tempPasswordService;
 
     // todo: Регистрация пользователя в системе
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @Transactional
     public RegistrationResponseDto registrationUser(RegistrationRequestDto request, UUID createdBy) {
         if (usersRepository.existsByEmail(request.getEmail())) {
