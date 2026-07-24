@@ -14,6 +14,7 @@ import ru.bank.auth_service.infrastructure.strategy.login.LoginProcessorFactory;
 import ru.bank.auth_service.infrastructure.strategy.login.LoginProcessorStrategy;
 import ru.bank.auth_service.model.dto.request.LoginRequestDto;
 import ru.bank.auth_service.model.dto.response.LoginResponseDto;
+import ru.bank.auth_service.model.dto.response.TokenPair;
 import ru.bank.auth_service.model.entity.Users;
 import ru.bank.auth_service.model.enums.ClientType;
 import ru.bank.auth_service.model.enums.UserStatus;
@@ -48,14 +49,12 @@ public class AuthenticationService {
             log.info("Пользователь: {} активирован при первом заходе в систему", user.getId());
         }
 
-        String accessToken = jwtTokenProvider.generatedAccessToken(user);
-        String refreshToken = jwtTokenProvider.generatedRefreshToken(user);
-        String sessionId = jwtTokenProvider.getSessionIdFromToken(refreshToken);
-        Long refreshTtl = jwtTokenProvider.getExpirationFromToken(refreshToken);
-        redisTokenStore.saveRefreshToken(user.getId(), sessionId, refreshToken, refreshTtl);
+        TokenPair tokenPair = jwtTokenProvider.generatedTokenPair(user);
+        String sessionId = jwtTokenProvider.getSessionIdFromToken(tokenPair.refreshToken());
+        Long refreshTtl = jwtTokenProvider.getExpirationFromToken(tokenPair.refreshToken());
+        redisTokenStore.saveRefreshToken(user.getId(), sessionId, tokenPair.refreshToken(), refreshTtl);
         log.debug("Создана сессия для пользователя: {}, session: {}", user.getId(), sessionId);
-
         ClientResponseProcessorStrategy processor = clientResponseProcessorFactory.getProcessor(clientType);
-        return processor.processorLoginResponse(user, accessToken, refreshToken, response);
+        return processor.processorLoginResponse(user, tokenPair.accessToken(), tokenPair.refreshToken(), response);
     }
 }

@@ -5,10 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import ru.bank.auth_service.infrastructure.util.ClientTypeResolver;
 import ru.bank.auth_service.model.dto.request.LoginRequestDto;
 import ru.bank.auth_service.model.dto.response.LoginResponseDto;
@@ -38,7 +35,7 @@ public class AuthController {
         return ResponseEntity.ok().body(result);
     }
 
-    @PostMapping("/logout")
+    @GetMapping("/logout")
     public ResponseEntity<Void> logout(
             HttpServletRequest servletRequest,
             HttpServletResponse servletResponse

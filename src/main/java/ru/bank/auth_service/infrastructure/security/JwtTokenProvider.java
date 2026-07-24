@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import ru.bank.auth_service.exception.custom.auth.AuthException;
+import ru.bank.auth_service.model.dto.response.TokenPair;
 import ru.bank.auth_service.model.entity.Users;
 
 import java.nio.charset.StandardCharsets;
@@ -77,8 +78,7 @@ public class JwtTokenProvider {
     }
 
     // todo: Создание builder для jwt токенов
-    private String buildToken(Users user, Long expiration) {
-        String sessionId = UUID.randomUUID().toString();
+    private String buildToken(Users user, Long expiration, String sessionId) {
         return Jwts.builder()
                 .subject(user.getEmail())
                 .claim("userId", user.getId())
@@ -92,14 +92,13 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    // todo: Генерация долгоживущего токена
-    public String generatedRefreshToken(Users user){
-        return buildToken(user, refreshTokenExpiration);
-    }
-
-    // todo: Генерация временного токена
-    public String generatedAccessToken(Users user) {
-        return buildToken(user, accessTokenExpiration);
+    // todo: Генерация пары токенов access + refresh
+    public TokenPair generatedTokenPair(Users user){
+        String sessionId = UUID.randomUUID().toString();
+        String accessToken = buildToken(user, accessTokenExpiration, sessionId);
+        String refreshToken = buildToken(user, refreshTokenExpiration, sessionId);
+        log.debug("Создана пара токенов с session: {}", sessionId);
+        return new TokenPair(accessToken, refreshToken);
     }
 
     // todo: Проверка валидности токена

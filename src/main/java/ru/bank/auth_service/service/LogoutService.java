@@ -38,8 +38,8 @@ public class LogoutService {
             log.error("Не удалось определить сессию пользователя при выходе");
             throw new AuthException("Не удалось определить сессию пользователя");
         }
-        invalidateAccessToken(tokens.accessToken());
         invalidateRefreshToken(tokens.refreshToken(), userId, sessionId);
+        invalidateAccessToken(tokens.accessToken());
         clearClientTokens(response, clientType);
         log.info("Выход выполнен для пользователя: {}, сессия: {}", userId, sessionId);
     }
@@ -58,7 +58,8 @@ public class LogoutService {
         if(isValidToken(tokens.refreshToken())){
             return jwtTokenProvider.getUserIdFromToken(tokens.refreshToken());
         }
-        return null;
+        return null; // Скорее всего правильным решение будет выбить Exception если вдруг в токенах
+        // отсутсвует userId + sessionId т.к эта ситуация практически невозможна
     }
 
     // todo: Извлечение sessionId из access либо refresh токена
@@ -70,6 +71,8 @@ public class LogoutService {
             return jwtTokenProvider.getSessionIdFromToken(tokens.refreshToken());
         }
         return null;
+        // Скорее всего правильным решение будет выбить Exception если вдруг в токенах
+        // отсутсвует userId + sessionId т.к эта ситуация практически невозможна
     }
 
     // todo: Проверка валидности токена
@@ -94,7 +97,7 @@ public class LogoutService {
         if(!isValidToken(refreshToken)){
             return;
         }
-        redisTokenStore.deleteRefreshToken(userId, sessionId, refreshToken);
+        redisTokenStore.deleteRefreshToken(userId, sessionId);
         log.debug("Refresh токен удален с userId: {}, сессия: {}", userId, sessionId);
     }
 
