@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.bank.auth_service.infrastructure.storage.cookies.CookieManager;
+import ru.bank.auth_service.model.dto.response.TokenPair;
 import ru.bank.auth_service.model.enums.ClientType;
 
 @Component
@@ -16,11 +17,11 @@ public class WebLogoutProcessor implements LogoutProcessorStrategy{
     private final CookieManager cookieManager;
 
     @Override
-    public LogoutTokens extractTokens(HttpServletRequest request) {
+    public TokenPair extractTokens(HttpServletRequest request) {
         String accessToken = cookieManager.getAccessTokenFromCookie(request);
         String refreshToken = cookieManager.getRefreshTokenFromCookie(request);
         log.debug("Токены для Web клиента получены");
-        return new LogoutTokens(accessToken, refreshToken);
+        return new TokenPair(accessToken, refreshToken);
     }
 
     @Override

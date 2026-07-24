@@ -29,10 +29,12 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/auth/login", "/auth/refresh")
+                .authorizeHttpRequests(auth -> auth.requestMatchers(
+                        "/auth/login","/auth/refresh/tokens")
                         .permitAll()
-                        .requestMatchers("/auth/admin/**", "/auth/actuator/**").hasRole("ADMIN")
-                        .requestMatchers("/auth/manager/**").hasRole("MANAGER, ADMIN")
+                        .requestMatchers("/admin/**", "/auth/actuator/**").hasRole("ADMIN")
+                        .requestMatchers("/manager/**").hasRole("MANAGER")
+                        .requestMatchers("/user/**").hasRole("USER")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();

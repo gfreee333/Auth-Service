@@ -10,7 +10,7 @@ import ru.bank.auth_service.infrastructure.security.JwtTokenProvider;
 import ru.bank.auth_service.infrastructure.storage.redis.RedisTokenStore;
 import ru.bank.auth_service.infrastructure.strategy.logout.LogoutProcessorFactory;
 import ru.bank.auth_service.infrastructure.strategy.logout.LogoutProcessorStrategy;
-import ru.bank.auth_service.infrastructure.strategy.logout.LogoutTokens;
+import ru.bank.auth_service.model.dto.response.TokenPair;
 import ru.bank.auth_service.model.enums.ClientType;
 
 import java.util.UUID;
@@ -27,7 +27,7 @@ public class LogoutService {
     // todo: logout - выход пользователя из системы
     public void logout(HttpServletRequest request, HttpServletResponse response, ClientType clientType) {
         log.info("Попытка выхода для клиента: {}", clientType);
-        LogoutTokens tokens = extractTokens(request, clientType);
+        TokenPair tokens = extractTokens(request, clientType);
         UUID userId = extractUserId(tokens);
         String sessionId = extractSessionId(tokens);
         if (userId == null) {
@@ -45,13 +45,13 @@ public class LogoutService {
     }
 
     // todo: Извлечение токена из запроса в зависимости от типа клиента
-    private LogoutTokens extractTokens(HttpServletRequest request, ClientType clientType){
+    private TokenPair extractTokens(HttpServletRequest request, ClientType clientType){
         LogoutProcessorStrategy processor = logoutProcessorFactory.getProcessor(clientType);
         return processor.extractTokens(request);
     }
 
     // todo: Извлечение userId из access либо refresh токена
-    private UUID extractUserId(LogoutTokens tokens){
+    private UUID extractUserId(TokenPair tokens){
         if(isValidToken(tokens.accessToken())){
             return jwtTokenProvider.getUserIdFromToken(tokens.accessToken());
         }
@@ -62,7 +62,7 @@ public class LogoutService {
     }
 
     // todo: Извлечение sessionId из access либо refresh токена
-    private String extractSessionId(LogoutTokens tokens){
+    private String extractSessionId(TokenPair tokens){
         if(isValidToken(tokens.accessToken())){
             return jwtTokenProvider.getSessionIdFromToken(tokens.accessToken());
         }
