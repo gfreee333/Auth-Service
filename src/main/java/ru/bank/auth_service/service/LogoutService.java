@@ -47,10 +47,8 @@ public class LogoutService {
             return;
         }
         Long ttl = jwtTokenProvider.getExpirationFromToken(accessToken);
-        if (ttl > 0) {
-            redisTokenStore.addAccessTokenInBlackList(accessToken, ttl);
-            log.debug("Access токен добавлен в черный список");
-        }
+        redisTokenStore.addAccessTokenInBlackList(accessToken, ttl);
+        log.debug("Access токен добавлен в черный список");
     }
 
     // todo: Удаление refresh токена из Redis для конкретной session
