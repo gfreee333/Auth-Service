@@ -1,7 +1,6 @@
 package ru.bank.auth_service.infrastructure.security;
 
 import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -12,15 +11,21 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import ru.bank.auth_service.exception.custom.auth.ClientInBlackListException;
+import ru.bank.auth_service.exception.custom.auth.InvalidTokenException;
+import ru.bank.auth_service.exception.custom.auth.TokenInBlackListException;
 import ru.bank.auth_service.infrastructure.storage.cookies.CookieManager;
 import ru.bank.auth_service.infrastructure.storage.redis.RedisTokenStore;
+import ru.bank.auth_service.model.enums.Role;
+import ru.bank.auth_service.model.enums.UserStatus;
+
 import java.io.IOException;
 import java.util.Collections;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class  JwtAuthenticationFilter extends OncePerRequestFilter {
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final RedisTokenStore redisTokenStore;
@@ -29,71 +34,76 @@ public class  JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
-
-        String token = extractToken(request);
-
-        // todo: Если токена нет -> пользователь не авторизован в системе
-        if (token == null) {
-            log.debug("Токен не найден в запросе");
-            filterChain.doFilter(request, response);
-            return;
-        }
+                                    FilterChain filterChain) throws IOException {
 
         try {
-            if (redisTokenStore.checkAccessTokenBlackList(token)) {
-                log.warn("Ошибка аутентификации, token пользователя находиться в черном списке");
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
-                        "Token находиться в черном списке");
+            String token = extractToken(request);
+            if (token == null) {
+                filterChain.doFilter(request, response);
                 return;
             }
-
-            if(!jwtTokenProvider.isValidToken(token)){
-                log.warn("Невалидный токен");
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
-                        "Невалидный токен");
-                return;
+            validateToken(token);
+            if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                setAuthentication(request, token);
             }
-
-            String email = jwtTokenProvider.getEmailFromToken(token);
-            String role = jwtTokenProvider.getRoleFromToken(token);
-            String status = jwtTokenProvider.getUserStatusFromToken(token);
-            // todo: Проверка статуса пользователя
-            if ("BLOCKED".equals(status)) {
-                log.warn("Пользователь со статусом: {}", status);
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Пользователь cо статусом: " + status);
-                return;
-            }
-            // todo: Установка аутентификации в SecurityContext
-            if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(email, null,
-                                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role)));
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-                log.debug("Пользователь аутентифицирован: {} с ролью: {}", email, role);
-            }
+            filterChain.doFilter(request, response);
+        } catch (TokenInBlackListException | InvalidTokenException ex) {
+            log.warn("Ошибка аутентификации: {}", ex.getMessage());
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, ex.getMessage());
+        } catch (ClientInBlackListException ex) {
+            log.warn("Доступ запрещен: {}", ex.getMessage());
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, ex.getMessage());
         } catch (Exception ex) {
-            log.warn("Ошибка валидации JWT: {}", ex.getMessage());
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Некорректный token");
+            log.warn("Неожиданная ошибка: {}", ex.getMessage());
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Внутренняя ошибка");
         }
-        filterChain.doFilter(request, response);
     }
 
-    private String extractToken(HttpServletRequest request){
-        // todo: Получение токена для Mobile
+    // todo: Получение access + refresh токенов
+    private String extractToken(HttpServletRequest request) {
         String authHeader = request.getHeader("Authorization");
-        if(authHeader != null && authHeader.startsWith("Bearer ")){
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
             log.debug("Токен извлечен из Authorization header");
             return token;
         }
-        // todo: Получения токена для Web
         String token = cookieManager.getAccessTokenFromCookie(request);
-        if(token != null){
+        if (token != null) {
             log.debug("Токен извлечен из Cookies");
         }
         return token;
     }
+
+    // todo: Проверка валидности токенов
+    private void validateToken(String token) {
+        if (redisTokenStore.checkAccessTokenBlackList(token)) {
+            log.warn("Токен находиться в черном списке");
+            throw new TokenInBlackListException("Токен находиться в черном списке");
+        }
+        if (jwtTokenProvider.isInvalidToken(token)) {
+            log.warn("Невалидный токен");
+            throw new InvalidTokenException("Невалидный токен");
+        }
+        UserStatus status = jwtTokenProvider.getUserStatusFromToken(token);
+        if (status.isBlocked()) {
+            log.warn("Пользователь заблокирован в системе");
+            throw new ClientInBlackListException("Пользователь заблокирован в системе");
+        }
+    }
+
+    // todo: Установка аутентификации
+    private void setAuthentication(HttpServletRequest request, String token) {
+        String email = jwtTokenProvider.getEmailFromToken(token);
+        Role role = jwtTokenProvider.getRoleFromToken(token);
+        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                email,
+                null,
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
+        );
+        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+        SecurityContextHolder.getContext().setAuthentication(authToken);
+        log.debug("Пользователь аутентифицирован: {} с ролью: {}", email, role);
+    }
+
 
 }

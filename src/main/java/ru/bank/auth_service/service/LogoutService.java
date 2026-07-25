@@ -36,26 +36,26 @@ public class LogoutService {
     }
 
     // todo: Извлечение токена из запроса в зависимости от типа клиента
-    private TokenPair extractTokens(HttpServletRequest request, ClientType clientType){
+    private TokenPair extractTokens(HttpServletRequest request, ClientType clientType) {
         LogoutProcessorStrategy processor = logoutProcessorFactory.getProcessor(clientType);
         return processor.extractTokens(request);
     }
 
     // todo: Добавления access токена в blackList
-    private void invalidateAccessToken(String accessToken){
-        if (!jwtTokenProvider.isValidToken(accessToken)){
+    private void invalidateAccessToken(String accessToken) {
+        if (jwtTokenProvider.isInvalidToken(accessToken)) {
             return;
         }
         Long ttl = jwtTokenProvider.getExpirationFromToken(accessToken);
-        if(ttl > 0){
+        if (ttl > 0) {
             redisTokenStore.addAccessTokenInBlackList(accessToken, ttl);
             log.debug("Access токен добавлен в черный список");
         }
     }
 
     // todo: Удаление refresh токена из Redis для конкретной session
-    private void invalidateRefreshToken(String refreshToken, UUID userId, String sessionId){
-        if(!jwtTokenProvider.isValidToken(refreshToken)){
+    private void invalidateRefreshToken(String refreshToken, UUID userId, String sessionId) {
+        if (jwtTokenProvider.isInvalidToken(refreshToken)) {
             return;
         }
         redisTokenStore.deleteRefreshToken(userId, sessionId);
@@ -63,7 +63,7 @@ public class LogoutService {
     }
 
     // todo: Очистка токенов на стороне клиента
-    private void clearClientTokens(HttpServletResponse response, ClientType clientType){
+    private void clearClientTokens(HttpServletResponse response, ClientType clientType) {
         LogoutProcessorStrategy processor = logoutProcessorFactory.getProcessor(clientType);
         processor.clearClientTokens(response);
     }
