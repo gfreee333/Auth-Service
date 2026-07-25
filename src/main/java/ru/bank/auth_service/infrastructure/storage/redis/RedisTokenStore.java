@@ -26,7 +26,7 @@ public class RedisTokenStore {
     }
 
     // todo: Удаление долгоживущего токена
-    public void deleteRefreshToken(UUID userId, String sessionId, String refreshToken) {
+    public void deleteRefreshToken(UUID userId, String sessionId) {
         String userKey = REFRESH_USER_PREFIX + userId + ":session:" + sessionId;
         redisTemplate.delete(userKey);
         log.debug("Refresh token удален для пользователя: {}, сессия: {}", userId, sessionId);

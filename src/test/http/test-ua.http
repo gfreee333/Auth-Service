@@ -1,0 +1,63 @@
+# Тестирование Login - определения ClientType при использование Web БраузеровLogin
+
+### Test #1 Mozila
+POST http://localhost:8090/auth/login
+Content-Type: application/json
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+
+{
+  "identifier": "admin@bank.com",
+  "password": "Admin123"
+}
+
+### Test #2 Chrome
+POST http://localhost:8090/auth/login
+Content-Type: application/json
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36
+
+{
+"identifier": "admin@bank.com",
+"password": "Admin123"
+}
+
+### Test #3 FireFox
+POST http://localhost:8090/auth/login
+Content-Type: application/json
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0
+
+{
+"identifier": "admin@bank.com",
+"password": "Admin123"
+}
+
+### Test #4 edge
+POST http://localhost:8090/auth/login
+Content-Type: application/json
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0
+
+{
+  "identifier": "admin@bank.com",
+  "password": "Admin123"
+}
+
+### Test #5 opera
+POST http://localhost:8090/auth/login
+Content-Type: application/json
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 OPR/106.0.0.0
+
+{
+  "identifier": "admin@bank.com",
+  "password": "Admin123"
+}
+### Test #6 yandex
+POST http://localhost:8090/auth/login
+Content-Type: application/json
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 YaBrowser/24.0.0.0
+
+{
+  "identifier": "admin@bank.com",
+  "password": "Admin123"
+}
+
+
+

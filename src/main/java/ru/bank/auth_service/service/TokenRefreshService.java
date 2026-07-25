@@ -128,15 +128,14 @@ public class TokenRefreshService {
 
     // todo: Генерация новой пары токенов (access, refresh)
     private TokenPair generatedAndStoreNewTokens(Users user, String sessionId, String refreshToken){
-        String newAccessToken = jwtTokenProvider.generatedAccessToken(user);
-        String newRefreshToken = jwtTokenProvider.generatedRefreshToken(user);
-        String newSessionId = jwtTokenProvider.getSessionIdFromToken(newRefreshToken);
-        Long refreshTtl = jwtTokenProvider.getExpirationFromToken(newRefreshToken);
-        redisTokenStore.deleteRefreshToken(user.getId(), sessionId, refreshToken);
-        redisTokenStore.saveRefreshToken(user.getId(), newSessionId, newRefreshToken, refreshTtl);
+        TokenPair newTokenPair = jwtTokenProvider.generatedTokenPair(user);
+        String newSessionId = jwtTokenProvider.getSessionIdFromToken(newTokenPair.refreshToken());
+        Long refreshTtl = jwtTokenProvider.getExpirationFromToken(newTokenPair.refreshToken());
+        redisTokenStore.deleteRefreshToken(user.getId(), sessionId);
+        redisTokenStore.saveRefreshToken(user.getId(), newSessionId, newTokenPair.refreshToken(), refreshTtl);
         log.debug("Новая обновленная пара токенов: (access: {}, refresh: {}, новая сессия: {}"
-                , newAccessToken, newRefreshToken, newSessionId);
-        return new TokenPair(newAccessToken, newRefreshToken);
+                , newTokenPair.accessToken(), newTokenPair.refreshToken(), newSessionId);
+        return newTokenPair;
     }
 
 }
