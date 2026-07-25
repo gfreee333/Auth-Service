@@ -16,11 +16,14 @@ import ru.bank.auth_service.exception.custom.auth.InvalidTokenException;
 import ru.bank.auth_service.exception.custom.auth.TokenInBlackListException;
 import ru.bank.auth_service.infrastructure.storage.cookies.CookieManager;
 import ru.bank.auth_service.infrastructure.storage.redis.RedisTokenStore;
+import ru.bank.auth_service.infrastructure.util.ClientTypeResolver;
+import ru.bank.auth_service.model.enums.ClientType;
 import ru.bank.auth_service.model.enums.Role;
 import ru.bank.auth_service.model.enums.UserStatus;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -29,13 +32,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final RedisTokenStore redisTokenStore;
+    private final ClientTypeResolver clientTypeResolver;
     private final CookieManager cookieManager;
+
+    private static final List<String> PUBLIC_PATHS = List.of(
+            "/auth/login",
+            "/auth/refresh/tokens"
+    );
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request){
+        String url = request.getRequestURI();
+        return PUBLIC_PATHS.stream().anyMatch(url::equals);
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws IOException {
-
         try {
             String token = extractToken(request);
             if (token == null) {
@@ -61,17 +75,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     // todo: Получение access + refresh токенов
     private String extractToken(HttpServletRequest request) {
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
-            log.debug("Токен извлечен из Authorization header");
-            return token;
+        ClientType clientType = clientTypeResolver.resolve(request);
+        if(clientType.isWeb()){
+            log.debug("Access токен извлечен из cookies");
+            return cookieManager.getAccessTokenFromCookie(request);
+        } else {
+            String authHeader = request.getHeader("Authorization");
+            if(authHeader != null && authHeader.startsWith("Bearer ")){
+                log.debug("Access токен извлечен из Authorization header");
+                return authHeader.substring(7);
+            }
         }
-        String token = cookieManager.getAccessTokenFromCookie(request);
-        if (token != null) {
-            log.debug("Токен извлечен из Cookies");
-        }
-        return token;
+        return null;
     }
 
     // todo: Проверка валидности токенов

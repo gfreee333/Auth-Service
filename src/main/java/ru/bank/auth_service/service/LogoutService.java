@@ -24,7 +24,9 @@ public class LogoutService {
     private final RedisTokenStore redisTokenStore;
 
     // todo: logout - выход пользователя из системы
-    public void logout(HttpServletRequest request, HttpServletResponse response, ClientType clientType) {
+    public void logout(HttpServletRequest request,
+                       HttpServletResponse response,
+                       ClientType clientType) {
         log.info("Попытка выхода для клиента: {}", clientType);
         TokenPair tokens = extractTokens(request, clientType);
         UUID userId = jwtTokenProvider.getUserIdFromToken(tokens.refreshToken());

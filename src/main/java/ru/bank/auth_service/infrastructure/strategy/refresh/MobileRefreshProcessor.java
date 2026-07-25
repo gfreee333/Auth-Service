@@ -15,6 +15,8 @@ public class MobileRefreshProcessor implements RefreshResponseProcessorStrategy{
 
     @Override
     public LoginResponseDto processRefreshResponse(Users user, String accessToken, String refreshToken, HttpServletResponse response) {
+        // Заглушка повторного сохранения токенов для Mobile клиента
+        // Пока лишь возвращаем refresh + access через тело запроса пользователю
         log.debug("Mobile токены обновлены для пользователя: {}", user.getId());
         return new LoginResponseDto(
                 "Токены успешно обновлены",
@@ -25,6 +27,12 @@ public class MobileRefreshProcessor implements RefreshResponseProcessorStrategy{
                 refreshToken,
                 ClientType.MOBILE
         );
+    }
+
+    @Override
+    public void clearClientTokens(HttpServletResponse response) {
+        // Заглушка, в будущем может быть добавлена дополнительная поддержка Mobile клиента
+        log.debug("Очистка токенов для Mobile клиента");
     }
 
     @Override

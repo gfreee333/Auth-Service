@@ -36,7 +36,7 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth.requestMatchers(
-                        "/auth/login","/auth/refresh/tokens")
+                        "/auth/login","/auth/refresh/tokens") // Подумать, а точно ли можно всем давать доступ к refresh
                         .permitAll()
                         .requestMatchers("/admin/**", "/auth/actuator/**").hasRole("ADMIN")
                         .requestMatchers("/manager/**").hasRole("MANAGER")

@@ -6,8 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.bank.auth_service.exception.custom.auth.InvalidTokenException;
-import ru.bank.auth_service.exception.custom.auth.TokenInBlackListException;
-import ru.bank.auth_service.exception.custom.user.UserBlockedException;
+import ru.bank.auth_service.exception.custom.auth.TokenReuseAttemptException;
 import ru.bank.auth_service.exception.custom.user.UserNotFoundException;
 import ru.bank.auth_service.infrastructure.security.JwtTokenProvider;
 import ru.bank.auth_service.infrastructure.storage.cookies.CookieManager;
@@ -46,6 +45,14 @@ public class TokenRefreshService {
         invalidateOldAccessToken(oldTokenPair.accessToken());
         UUID oldUserId = jwtTokenProvider.getUserIdFromToken(oldTokenPair.refreshToken());
         String oldSessionId = jwtTokenProvider.getSessionIdFromToken(oldTokenPair.refreshToken());
+        if(!redisTokenStore.existsRefreshToken(oldUserId, oldSessionId)){
+            log.warn("Попытка повторного использования refresh токена!!!");
+            redisTokenStore.deleteAllRefreshToken(oldUserId);
+            RefreshResponseProcessorStrategy clearProcessor = refreshResponseProcessorFactory.getProcessor(clientType);
+            clearProcessor.clearClientTokens(response);
+            throw new TokenReuseAttemptException("Подозрительная активность. Сброс всех активных сессий");
+        }
+
         Users user = findAndValidateUser(oldUserId);
         TokenPair newTokenPair = generatedNewTokens(user, oldSessionId);
         RefreshResponseProcessorStrategy processor = refreshResponseProcessorFactory.getProcessor(clientType);
@@ -55,8 +62,8 @@ public class TokenRefreshService {
 
     // todo: Извлечение пары токенов access + refresh в зависимости от типа клиента
     private TokenPair extractTokens(HttpServletRequest request, ClientType clientType) {
-        String accessToken = extractRefreshToken(request, clientType);
-        String refreshToken = extractAccessToken(request, clientType);
+        String accessToken = extractAccessToken(request, clientType);
+        String refreshToken = extractRefreshToken(request, clientType);
         return new TokenPair(accessToken, refreshToken);
     }
 
@@ -88,29 +95,20 @@ public class TokenRefreshService {
             log.debug("Access токен отсутствует в запросе");
             return;
         }
-        if (redisTokenStore.checkAccessTokenBlackList(oldAccessToken)) {
-            log.warn("Access токен находиться в черном списке");
-            throw new TokenInBlackListException("Токен находиться в черном списке");
+        if(jwtTokenProvider.isValidToken(oldAccessToken)){
+            Long ttl = jwtTokenProvider.getExpirationFromToken(oldAccessToken);
+            redisTokenStore.addAccessTokenInBlackList(oldAccessToken, ttl);
+            log.debug("Старый access токен добавлен в BlackList");
+        } else {
+            log.debug("Старый access токен не является валидным/истекло время");
         }
-        if (jwtTokenProvider.isInvalidToken(oldAccessToken)) {
-            log.warn("Access токен невалидный");
-            throw new InvalidTokenException("Access токен невалиден");
-        }
-        Long ttl = jwtTokenProvider.getExpirationFromToken(oldAccessToken);
-        redisTokenStore.addAccessTokenInBlackList(oldAccessToken, ttl);
-        log.debug("Старый access токен добавлен в BlackList");
     }
 
 
     // todo: Проверка и получения данных о пользователе
     private Users findAndValidateUser(UUID userId) {
-        Users user = usersRepository.findById(userId)
+        return usersRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("Пользователь с id: {} " + userId + " не найден"));
-        if (user.getStatus().isBlocked()) {
-            log.warn("Пользователь: {} со статусом: {}", userId, user.getStatus());
-            throw new UserBlockedException("Пользователь имеет статус BLOCKED");
-        }
-        return user;
     }
 
     // todo: Генерация новой пары токенов (access, refresh)
