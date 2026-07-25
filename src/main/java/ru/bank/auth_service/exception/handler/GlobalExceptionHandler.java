@@ -4,11 +4,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import ru.bank.auth_service.exception.custom.auth.ClientInBlackListException;
-import ru.bank.auth_service.exception.custom.auth.ClientTypeNotSupportedException;
-import ru.bank.auth_service.exception.custom.auth.UnsupportedIdentifierException;
+import ru.bank.auth_service.exception.custom.auth.*;
 import ru.bank.auth_service.exception.response.ErrorResponse;
-import ru.bank.auth_service.exception.custom.auth.AuthException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -48,5 +45,4 @@ public class GlobalExceptionHandler {
         );
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
-
 }

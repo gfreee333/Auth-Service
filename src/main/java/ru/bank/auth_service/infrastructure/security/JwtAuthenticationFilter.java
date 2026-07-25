@@ -59,9 +59,9 @@ public class  JwtAuthenticationFilter extends OncePerRequestFilter {
             String role = jwtTokenProvider.getRoleFromToken(token);
             String status = jwtTokenProvider.getUserStatusFromToken(token);
             // todo: Проверка статуса пользователя
-            if ("BLOCKED".equals(status) || "DELETED".equals(status)) {
+            if ("BLOCKED".equals(status)) {
                 log.warn("Пользователь со статусом: {}", status);
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Пользователь: " + status);
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Пользователь cо статусом: " + status);
                 return;
             }
             // todo: Установка аутентификации в SecurityContext
