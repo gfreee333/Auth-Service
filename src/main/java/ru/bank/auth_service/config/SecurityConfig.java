@@ -30,13 +30,13 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Временное рещение для тестирования
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth.requestMatchers(
-                        "/auth/login","/auth/refresh/tokens")
+                        "/auth/login","/auth/refresh/tokens") // Подумать, а точно ли можно всем давать доступ к refresh
                         .permitAll()
                         .requestMatchers("/admin/**", "/auth/actuator/**").hasRole("ADMIN")
                         .requestMatchers("/manager/**").hasRole("MANAGER")

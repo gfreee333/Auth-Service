@@ -45,7 +45,7 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/refresh/tokens")
+    @GetMapping("/refresh/tokens")
     public ResponseEntity<LoginResponseDto> refreshToken(
             HttpServletRequest servletRequest,
             HttpServletResponse servletResponse

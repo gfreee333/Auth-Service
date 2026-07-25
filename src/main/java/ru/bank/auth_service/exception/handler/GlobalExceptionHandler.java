@@ -5,13 +5,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import ru.bank.auth_service.exception.custom.auth.*;
+import ru.bank.auth_service.exception.custom.user.UserNotFoundException;
 import ru.bank.auth_service.exception.response.ErrorResponse;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(AuthException.class)
-    public ResponseEntity<ErrorResponse> authExceptionHandler(AuthException ex){
+    public ResponseEntity<ErrorResponse> authExceptionHandler(AuthException ex) {
         ErrorResponse error = new ErrorResponse(
                 ex.getMessage(),
                 HttpStatus.UNAUTHORIZED.value()
@@ -20,7 +21,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(ClientInBlackListException.class)
-    public ResponseEntity<ErrorResponse> clientInBlackListHandler(ClientInBlackListException ex){
+    public ResponseEntity<ErrorResponse> clientInBlackListHandler(ClientInBlackListException ex) {
         ErrorResponse error = new ErrorResponse(
                 ex.getMessage(),
                 HttpStatus.FORBIDDEN.value()
@@ -29,7 +30,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(ClientTypeNotSupportedException.class)
-    public ResponseEntity<ErrorResponse> clientTypeNotSupportedHandler(ClientTypeNotSupportedException ex){
+    public ResponseEntity<ErrorResponse> clientTypeNotSupportedHandler(ClientTypeNotSupportedException ex) {
         ErrorResponse error = new ErrorResponse(
                 ex.getMessage(),
                 HttpStatus.UNAUTHORIZED.value()
@@ -38,11 +39,48 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(UnsupportedIdentifierException.class)
-    public ResponseEntity<ErrorResponse> unsupportedIdentifierHandler(UnsupportedIdentifierException ex){
+    public ResponseEntity<ErrorResponse> unsupportedIdentifierHandler(UnsupportedIdentifierException ex) {
         ErrorResponse error = new ErrorResponse(
                 ex.getMessage(),
                 HttpStatus.UNAUTHORIZED.value()
         );
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
+
+    @ExceptionHandler(TokenInBlackListException.class)
+    public ResponseEntity<ErrorResponse> tokenInBlackListHandler(TokenInBlackListException ex) {
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage(),
+                HttpStatus.FORBIDDEN.value()
+        );
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    @ExceptionHandler(InvalidTokenException.class)
+    public ResponseEntity<ErrorResponse> invalidTokenHandler(InvalidTokenException ex) {
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage(),
+                HttpStatus.UNAUTHORIZED.value()
+        );
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorResponse> userNotFoundHandler(UserNotFoundException ex){
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage(),
+                HttpStatus.NOT_FOUND.value()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
+    }
+
+    @ExceptionHandler(TokenReuseAttemptException.class)
+    public ResponseEntity<ErrorResponse> tokenReuseAttemptHandler(TokenReuseAttemptException ex){
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage(),
+                HttpStatus.UNAUTHORIZED.value()
+        );
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
 }

@@ -27,8 +27,8 @@ public class MobileLogoutProcessor implements LogoutProcessorStrategy{
 
     @Override
     public void clearClientTokens(HttpServletResponse response) {
-        // В будущем при расширении и реализации нативного mobile приложения, нужно будет реализовать
-        // логику очистки токенов на стороне клиента, при logout
+        // todo: Заглушка, моделирование удаление токенов на мобильном устройстве
+        log.info("Попытка очистки токенов на мобильном приложение");
         log.debug("Mobile клиент сам очистит токены");
     }
 

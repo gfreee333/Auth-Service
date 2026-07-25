@@ -34,9 +34,12 @@ public class RedisTokenStore {
 
     // todo: Удаление всех Refresh token пользователя
     public void deleteAllRefreshToken(UUID userId) {
-        String pattern = REFRESH_USER_PREFIX + userId + ":session:";
+        String pattern = REFRESH_USER_PREFIX + userId + ":session:*";
+        log.info("ПОИСК КЛЮЧА ПО ПАТТЕРНУ: {}", pattern);
         Set<String> userKeys = redisTemplate.keys(pattern);
+        log.info("Найдено ключей : {}", userKeys);
         if (userKeys != null && !userKeys.isEmpty()) {
+            log.info("Удаляем ключе: {}", userKeys);
             redisTemplate.delete(userKeys);
             log.info("Все refresh tokens удалены у пользователя");
         } else {
@@ -44,21 +47,17 @@ public class RedisTokenStore {
         }
     }
 
-    // todo: Проверка принадлежности токена пользователю + session
-    public boolean validateRefreshToken(UUID userId, String sessionId, String refreshToken) {
+    // todo: Проверка существует ли Refresh токен в Redis - Для Refresh Token Rotation
+    public boolean existsRefreshToken(UUID userId, String sessionId){
         String userKey = REFRESH_USER_PREFIX + userId + ":session:" + sessionId;
-        String storedToken = redisTemplate.opsForValue().get(userKey);
-        if(storedToken == null){
-            log.debug("Refresh токен не найден для пользователя: {}, сессия: {}", userId, sessionId);
+        Boolean exists = redisTemplate.hasKey(userKey);
+        if(Boolean.TRUE.equals(exists)){
+            log.debug("Refresh токен найден для пользователя: {}, сессия: {}", userId, sessionId);
+            return true;
+        } else {
+            log.warn("Refresh token не найден для пользователя: {}, сессия: {}", userId, sessionId);
             return false;
         }
-        boolean isValid = storedToken.equals(refreshToken);
-        if(isValid){
-            log.debug("Refresh токен валиден для пользователя: {}, сессия: {}", userId, sessionId);
-        } else {
-            log.warn("Refresh токен не соответствует для пользователя: {}, сессия: {}", userId, sessionId);
-        }
-        return isValid;
     }
 
     // todo: Получение кол-ва активных сессий у пользователя

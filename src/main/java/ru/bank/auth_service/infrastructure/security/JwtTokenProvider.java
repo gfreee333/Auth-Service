@@ -8,9 +8,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
-import ru.bank.auth_service.exception.custom.auth.AuthException;
+import ru.bank.auth_service.exception.custom.auth.InvalidTokenException;
 import ru.bank.auth_service.model.dto.response.TokenPair;
 import ru.bank.auth_service.model.entity.Users;
+import ru.bank.auth_service.model.enums.Role;
+import ru.bank.auth_service.model.enums.UserStatus;
 
 import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
@@ -93,7 +95,7 @@ public class JwtTokenProvider {
     }
 
     // todo: Генерация пары токенов access + refresh
-    public TokenPair generatedTokenPair(Users user){
+    public TokenPair generatedTokenPair(Users user) {
         String sessionId = UUID.randomUUID().toString();
         String accessToken = buildToken(user, accessTokenExpiration, sessionId);
         String refreshToken = buildToken(user, refreshTokenExpiration, sessionId);
@@ -111,75 +113,91 @@ public class JwtTokenProvider {
     }
 
     // todo: Метод для проверки валидности токена
-    public boolean isValidToken(String token){
+    public boolean isValidToken(String token) {
         try {
             validateToken(token);
             return true;
-        }catch (Exception ex){
+        } catch (Exception ex) {
             log.debug("Невалидный токен: {}", ex.getMessage());
             return false;
         }
     }
 
+    // todo: Метод для проверки является ли токен невалидным
+    public boolean isInvalidToken(String token) {
+        return !isValidToken(token);
+    }
+
+
     // todo: Получение остатка времени жизни токена
     public Long getExpirationFromToken(String token) {
-            Date expiration = validateToken(token).getExpiration();
-            return expiration.getTime() - System.currentTimeMillis();
+        Date expiration = validateToken(token).getExpiration();
+        return expiration.getTime() - System.currentTimeMillis();
     }
 
     // todo: Извлечение sessionId из токена
-    public String getSessionIdFromToken(String token){
+    public String getSessionIdFromToken(String token) {
         String sessionId = validateToken(token).get("sessionId", String.class);
-        if(sessionId == null){
+        if (sessionId == null) {
             log.error("Ошибка извлечения sessionId из токена");
-            throw new AuthException("sessionId не найден в токене");
+            throw new InvalidTokenException("sessionId не найден в токене");
         }
         return sessionId;
     }
 
     // todo: Извлечение userId из токена
-    public UUID getUserIdFromToken(String token){
+    public UUID getUserIdFromToken(String token) {
         String userIdStr = validateToken(token).get("userId", String.class);
-        if(userIdStr == null){
+        if (userIdStr == null) {
             log.error("Ошибка извлечения userId из токена");
-            throw new AuthException("userId не найден в токене");
+            throw new InvalidTokenException("userId не найден в токене");
         }
-        try{
+        try {
             return UUID.fromString(userIdStr);
-        } catch (IllegalArgumentException ex){
+        } catch (IllegalArgumentException ex) {
             log.error("Ошибка извлечения userId из токена: {}", ex.getMessage());
-            throw new AuthException("Неверный формат userId в токене");
+            throw new InvalidTokenException("Неверный формат userId в токене");
         }
-    }
-
-    // todo: Извлечение role из токена
-    public String getRoleFromToken(String token){
-        String role = validateToken(token).get("role", String.class);
-        if(role == null){
-             log.error("Ошибка извлечения role из токена");
-             throw new AuthException("Role не найдена в токене");
-        }
-        return role;
     }
 
     // todo: Извлечение email из токена
-    public String getEmailFromToken(String token){
+    public String getEmailFromToken(String token) {
         String email = validateToken(token).getSubject();
-        if(email == null){
+        if (email == null) {
             log.error("Ошибка извлечения Email из токена");
-            throw new AuthException("Email не найден в токене");
+            throw new InvalidTokenException("Email не найден в токене");
         }
         return email;
     }
 
     // todo: Извлечение статуса
-    public String getUserStatusFromToken(String token){
-        String status = validateToken(token).get("status", String.class);
-        if(status == null){
+    public UserStatus getUserStatusFromToken(String token) {
+        String statusSTR = validateToken(token).get("status", String.class);
+        if (statusSTR == null) {
             log.error("Ошибка извлечения status из токена");
-            throw new AuthException("Status не найден в токене");
+            throw new InvalidTokenException("Status не найден в токене");
         }
-        return status;
+        try {
+            return UserStatus.valueOf(statusSTR);
+        } catch (IllegalArgumentException ex) {
+            log.error("Неверный формат статуса в токене: {}", statusSTR);
+            throw new InvalidTokenException("Неверный формат статуса: " + statusSTR);
+        }
+    }
+
+    // todo: Извлечение role из токена
+    public Role getRoleFromToken(String token) {
+        String roleStr = validateToken(token).get("role", String.class);
+        if (roleStr == null) {
+            log.error("Ошибка извлечения role из токена");
+            throw new InvalidTokenException("Role не найдена в токене");
+        }
+        try {
+            return Role.valueOf(roleStr);
+        } catch (IllegalArgumentException ex) {
+            log.error("Неверный формат роли: {} ", roleStr);
+            throw new InvalidTokenException("Неверный формат роли: " + roleStr);
+        }
     }
 
 }

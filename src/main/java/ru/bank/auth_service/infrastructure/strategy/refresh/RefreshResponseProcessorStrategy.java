@@ -7,5 +7,6 @@ import ru.bank.auth_service.model.enums.ClientType;
 
 public interface RefreshResponseProcessorStrategy {
     LoginResponseDto processRefreshResponse(Users user, String accessToken, String refreshToken, HttpServletResponse response);
+    void clearClientTokens(HttpServletResponse response);
     ClientType getClientType();
 }

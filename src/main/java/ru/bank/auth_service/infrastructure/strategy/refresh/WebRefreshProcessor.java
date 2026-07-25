@@ -34,6 +34,13 @@ public class WebRefreshProcessor implements RefreshResponseProcessorStrategy{
     }
 
     @Override
+    public void clearClientTokens(HttpServletResponse response) {
+        cookieManager.deleteAccessTokenCookies(response);
+        cookieManager.deleteRefreshTokenCookies(response);
+        log.debug("Cookies очищены для WEB клиента");
+    }
+
+    @Override
     public ClientType getClientType() {
         return ClientType.WEB;
     }

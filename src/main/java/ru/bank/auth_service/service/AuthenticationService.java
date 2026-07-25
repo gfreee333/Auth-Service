@@ -35,7 +35,9 @@ public class AuthenticationService {
 
     // todo: login - вход пользователя в систему
     @Transactional
-    public LoginResponseDto login(LoginRequestDto request, HttpServletResponse response, ClientType clientType) {
+    public LoginResponseDto login(LoginRequestDto request,
+                                  HttpServletResponse response,
+                                  ClientType clientType) {
         log.info("Попытка входа в систему для клиента: {}, с идентификатором: {}", clientType, request.getIdentifier());
         LoginProcessorStrategy loginProcessor = loginProcessorFactory.getStrategy(request);
         Users user = loginProcessor.authenticate(request);
