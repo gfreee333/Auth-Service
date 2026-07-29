@@ -1,6 +1,7 @@
 package ru.bank.auth_service.infrastructure.security;
 
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -50,7 +51,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
-                                    FilterChain filterChain) throws IOException {
+                                    FilterChain filterChain) throws ServletException, IOException {
         try {
             String token = extractToken(request);
             if (token == null) {
@@ -68,9 +69,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } catch (ClientInBlackListException ex) {
             log.warn("Доступ запрещен: {}", ex.getMessage());
             response.sendError(HttpServletResponse.SC_FORBIDDEN, ex.getMessage());
-        } catch (Exception ex) {
-            log.warn("Возникла ошибка: {}", ex.getMessage());
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Внутренняя ошибка");
         }
     }
 
