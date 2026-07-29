@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ru.bank.auth_service.infrastructure.util.UserSecurityContext;
 import ru.bank.auth_service.model.dto.request.RegistrationRequestDto;
 import ru.bank.auth_service.model.dto.request.UpdateUserProfileRequestDto;
 import ru.bank.auth_service.model.dto.response.RegistrationResponseDto;
@@ -21,6 +22,7 @@ public class ManagerController {
 
     private final UserManagementService userManagementService;
     private final RegistrationService registrationService;
+    private final UserSecurityContext userSecurityContext;
 
     // Получение детальной информации о всех пользователях
     @GetMapping
@@ -54,11 +56,10 @@ public class ManagerController {
     }
 
     // Регистрация пользователя в системе
-    @PostMapping("/registration/{createdBy}")
-    public ResponseEntity<RegistrationResponseDto> registrationUser(
-            @RequestBody @Valid RegistrationRequestDto request,
-            @PathVariable("createdBy") UUID createdBy) {
-        RegistrationResponseDto result = registrationService.registrationUser(request, createdBy);
+    @PostMapping("/registration")
+    public ResponseEntity<RegistrationResponseDto> registrationUser(@RequestBody @Valid RegistrationRequestDto request) {
+        UUID userId = userSecurityContext.getCurrentUserId();
+        RegistrationResponseDto result = registrationService.registrationUser(request, userId);
         return ResponseEntity.ok().body(result);
     }
 

@@ -24,6 +24,7 @@ import ru.bank.auth_service.model.enums.UserStatus;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -68,7 +69,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             log.warn("Доступ запрещен: {}", ex.getMessage());
             response.sendError(HttpServletResponse.SC_FORBIDDEN, ex.getMessage());
         } catch (Exception ex) {
-            log.warn("Неожиданная ошибка: {}", ex.getMessage());
+            log.warn("Возникла ошибка: {}", ex.getMessage());
             response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Внутренняя ошибка");
         }
     }
@@ -110,14 +111,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private void setAuthentication(HttpServletRequest request, String token) {
         String email = jwtTokenProvider.getEmailFromToken(token);
         Role role = jwtTokenProvider.getRoleFromToken(token);
+        UUID userId = jwtTokenProvider.getUserIdFromToken(token);
+        CustomUserDetails details = new CustomUserDetails(email, role, userId);
         UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                email,
+                details,
                 null,
                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
         );
         authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
         SecurityContextHolder.getContext().setAuthentication(authToken);
-        log.debug("Пользователь аутентифицирован: {} с ролью: {}", email, role);
+        log.debug("Пользователь: {} аутентифицирован с email: {} и ролью: {}", userId, email, role);
     }
 
 

@@ -3,6 +3,7 @@ package ru.bank.auth_service.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ru.bank.auth_service.infrastructure.util.UserSecurityContext;
 import ru.bank.auth_service.model.dto.request.ChangePasswordRequestDto;
 import ru.bank.auth_service.model.dto.request.UpdateUserProfileRequestDto;
 import ru.bank.auth_service.model.dto.response.UserProfile;
@@ -16,29 +17,34 @@ import java.util.UUID;
 public class UserController {
 
     private final UserManagementService userManagementService;
+    private final UserSecurityContext userSecurityContext;
 
-    // Получение информации о конкретном пользователе
-    @GetMapping("/{userId}")
-    public ResponseEntity<UserProfile> getMyProfile(@PathVariable("userId") UUID userId){
-        UserProfile result = userManagementService.getMyProfile(userId);
+    // Тут можно брать id пользователя из Context т.к мы явным понимаем, что указанное ID и будет
+    // ID пользователя из JWT
+
+    // Получение информации о своем профиле
+    @GetMapping
+    public ResponseEntity<UserProfile> getMyProfile(){
+        UUID myUserId = userSecurityContext.getCurrentUserId();
+        UserProfile result = userManagementService.getMyProfile(myUserId);
         return ResponseEntity.ok().body(result);
     }
 
     // Смена базовых данных, email, phoneNumber, firstName, lastName
-    @PatchMapping("/{userId}/profile")
+    @PatchMapping("/profile")
     public ResponseEntity<Void> updateProfile(
-            @PathVariable("userId") UUID userId,
             @RequestBody UpdateUserProfileRequestDto request) {
-        userManagementService.updateMyProfile(userId, request);
+        UUID myUserId = userSecurityContext.getCurrentUserId();
+        userManagementService.updateMyProfile(myUserId, request);
         return ResponseEntity.noContent().build();
     }
 
     // Смена пароля
-    @PatchMapping("/{userId}/password")
+    @PatchMapping("/password")
     public ResponseEntity<Void> changePassword(
-            @PathVariable("userId") UUID userId,
             @RequestBody ChangePasswordRequestDto request) {
-        userManagementService.changePassword(userId, request);
+        UUID myUserId = userSecurityContext.getCurrentUserId();
+        userManagementService.changePassword(myUserId, request);
         return ResponseEntity.noContent().build();
     }
 

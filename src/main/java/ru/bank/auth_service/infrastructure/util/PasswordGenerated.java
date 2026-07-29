@@ -1,10 +1,12 @@
 package ru.bank.auth_service.infrastructure.util;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.security.SecureRandom;
 
 @Component
+@Slf4j
 public class PasswordGenerated {
 
     private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%&*";

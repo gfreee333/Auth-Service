@@ -10,6 +10,7 @@ import ru.bank.auth_service.exception.custom.auth.AuthException;
 import ru.bank.auth_service.infrastructure.mapper.UsersMapper;
 import ru.bank.auth_service.infrastructure.storage.redis.RedisTokenStore;
 import ru.bank.auth_service.infrastructure.util.PasswordGenerated;
+import ru.bank.auth_service.infrastructure.util.UserSecurityContext;
 import ru.bank.auth_service.model.dto.request.ChangePasswordRequestDto;
 import ru.bank.auth_service.model.dto.request.UpdateUserProfileRequestDto;
 import ru.bank.auth_service.model.dto.response.UserInformationDto;
@@ -37,13 +38,9 @@ public class UserManagementService {
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public List<UserInformationDto> findAllUsers(){
         List<Users> users = usersRepository.findAll();
-        if(users.isEmpty()){
-            throw new AuthException(""); // Сгенерировать ответ, что пользователей в базе нет
-        } else {
-            return users.stream()
+        return users.stream()
                     .map(usersMapper::toUserInformationResponse)
                     .toList();
-        }
     }
 
     // todo: Получение детальной информации о пользователе через email

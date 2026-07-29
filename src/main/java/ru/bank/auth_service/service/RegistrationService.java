@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.bank.auth_service.exception.custom.duplicate.DuplicateEmailException;
 import ru.bank.auth_service.exception.custom.duplicate.DuplicatePhoneException;
+import ru.bank.auth_service.infrastructure.storage.redis.TempPasswordStore;
 import ru.bank.auth_service.infrastructure.util.PasswordGenerated;
 import ru.bank.auth_service.infrastructure.mapper.UsersMapper;
 import ru.bank.auth_service.model.dto.request.RegistrationRequestDto;
@@ -26,7 +27,7 @@ public class RegistrationService {
     private final UsersRepository usersRepository;
     private final PasswordEncoder passwordEncoder;
     private final UsersMapper usersMapper;
-    private final TempPasswordService tempPasswordService;
+    private final TempPasswordStore tempPasswordStore;
 
     // todo: Регистрация пользователя в системе
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
@@ -38,13 +39,13 @@ public class RegistrationService {
         if (usersRepository.existsByPhoneNumber(request.getPhoneNumber())) {
             throw new DuplicatePhoneException(request.getPhoneNumber());
         }
-        String tempPassword = PasswordGenerated.generatedPassword();
+        String tempPassword = passwordEncoder.encode(PasswordGenerated.generatedPassword());
         Users user = usersMapper.toUserEntity(request);
-        user.setPassword(passwordEncoder.encode(tempPassword));
+        user.setPassword(tempPassword);
         user.setCreatedBy(createdBy);
         Users savedUser = usersRepository.save(user);
-        tempPasswordService.saveInRedis(savedUser.getId(), tempPassword, Duration.ofHours(24));
-        log.info("Пользователь {} успешно создан пользователей {} ", savedUser.getId(), createdBy);
+        tempPasswordStore.saveInRedis(savedUser.getId(), tempPassword, Duration.ofHours(24));
+        log.info("Пользователь: {} успешно создан пользователем: {} ", savedUser.getId(), createdBy);
         return usersMapper.toRegistrationResponse(user);
     }
 

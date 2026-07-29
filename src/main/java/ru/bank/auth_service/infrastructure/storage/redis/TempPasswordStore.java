@@ -1,15 +1,15 @@
-package ru.bank.auth_service.service;
+package ru.bank.auth_service.infrastructure.storage.redis;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Service;
+import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.UUID;
 
-@Service
+@Component
 @RequiredArgsConstructor
-public class TempPasswordService {
+public class TempPasswordStore {
 
     private final RedisTemplate<String, String> redisTemplate;
     private static final String KEY_PREFIX = "generated:password:";
