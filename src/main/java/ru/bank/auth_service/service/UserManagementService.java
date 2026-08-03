@@ -6,15 +6,21 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.bank.auth_service.exception.custom.auth.AuthException;
+import ru.bank.auth_service.exception.custom.password.InvalidPasswordException;
+import ru.bank.auth_service.exception.custom.password.NotCoincidencePasswordException;
+import ru.bank.auth_service.exception.custom.user.UserBlockedForbiddenException;
+import ru.bank.auth_service.exception.custom.user.UserChangeRoleException;
+import ru.bank.auth_service.exception.custom.user.UserDeleteForbiddenException;
+import ru.bank.auth_service.exception.custom.user.UserNotFoundException;
 import ru.bank.auth_service.infrastructure.mapper.UsersMapper;
 import ru.bank.auth_service.infrastructure.storage.redis.RedisTokenStore;
 import ru.bank.auth_service.infrastructure.util.PasswordGenerated;
 import ru.bank.auth_service.model.dto.request.ChangePasswordRequestDto;
 import ru.bank.auth_service.model.dto.request.UpdateUserProfileRequestDto;
 import ru.bank.auth_service.model.dto.response.UserInformationDto;
-import ru.bank.auth_service.model.dto.response.UserProfile;
+import ru.bank.auth_service.model.dto.response.UserProfileDto;
 import ru.bank.auth_service.model.entity.Users;
+import ru.bank.auth_service.model.enums.Role;
 import ru.bank.auth_service.model.enums.UserStatus;
 import ru.bank.auth_service.repository.UsersRepository;
 
@@ -31,134 +37,189 @@ public class UserManagementService {
     private final PasswordEncoder passwordEncoder;
     private final RedisTokenStore redisTokenStore;
 
-    // todo: Базовый функционал по взаимодействию с БД
-
-    // todo: Информация о всех пользователях
+    /** Получение детальной информации о всех пользователях в системе
+     * @return список пользователь в системе
+     */
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-    public List<UserInformationDto> findAllUsers(){
+    public List<UserInformationDto> findAllUsers() {
         List<Users> users = usersRepository.findAll();
-        if(users.isEmpty()){
-            throw new AuthException(""); // Сгенерировать ответ, что пользователей в базе нет
-        } else {
-            return users.stream()
-                    .map(usersMapper::toUserInformationResponse)
-                    .toList();
+        return users.stream()
+                .map(usersMapper::toUserInformationResponse)
+                .toList();
+    }
+
+    /** Получение детальной информации о пользователе по email
+     * @return информация о конкретном пользователе
+     */
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    public UserInformationDto findUserByEmail(String email) {
+        Users user = usersRepository.findByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("Пользователь с данным email не был найден"));
+        return usersMapper.toUserInformationResponse(user);
+    }
+
+    /** Получение детальной информации о пользователе по id
+     * @return информация о конкретном пользователе
+     */
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    public UserInformationDto findUserById(UUID userId) {
+        Users user = usersRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("Пользователь по id не найден"));
+        return usersMapper.toUserInformationResponse(user);
+    }
+
+    /** Получение детальной информации о пользователе по phoneNumber
+     * @return информация о конкретном пользователе
+     */
+    // todo: Получение детальной информации о пользователе через phoneNumber (+)
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    public UserInformationDto findUserByPhoneNumber(String phoneNumber) {
+        Users user = usersRepository.findByPhoneNumber("+" + phoneNumber)
+                .orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
+        return usersMapper.toUserInformationResponse(user);
+    }
+
+    /** Удаления пользователя из системы по id <br>
+     * с выходом пользователя из всех активных сессий
+     */
+    // todo: Удалить пользователя из системы (+)
+    @PreAuthorize("hasAnyRole('ADMIN')")
+    @Transactional
+    public void deleteUserById(UUID targetUserId, UUID currentUserId) {
+        Users user = usersRepository.findById(targetUserId)
+                .orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
+        UUID createdId = usersRepository.findCreatedBy(currentUserId);
+        if(user.getId().equals(createdId) || user.getFirstName().equals("System")){
+            log.warn("Попытка удалить, аккаунт создателя, либо system админа: {}", targetUserId);
+            throw new UserDeleteForbiddenException("Попытка удаления, создателя либо system админа");
         }
-    }
-
-    // todo: Получение детальной информации о пользователе через email
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-    public UserInformationDto findUserByEmail(String email){
-        Users user = usersRepository.findByEmail(email).orElseThrow(); // Добавить обработку
-        // Пытаемся найти пользователя по email, если не нашли выбросили ошибку, пользователя с таким email
-        // не существует, в противном случае вернем информацию о конкретном пользователи
-        return usersMapper.toUserInformationResponse(user);
-    }
-
-    // todo: Получение детальной информации о пользователе через id
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-    public UserInformationDto findUserById(UUID userId){
-        Users user = usersRepository.findById(userId).orElseThrow();
-        return usersMapper.toUserInformationResponse(user);
-    }
-
-    // todo: Получение детальной информации о пользователе через phoneNumber
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
-    public UserInformationDto findUserByPhoneNumber(String phoneNumber){
-        Users user = usersRepository.findByPhoneNumber(phoneNumber).orElseThrow();
-        return usersMapper.toUserInformationResponse(user);
-    }
-
-    // todo: Удалить пользователя из системы
-    @PreAuthorize("hasAnyRole('ADMIN')")
-    @Transactional
-    public void deleteUserById(UUID userId){
-        Users user = usersRepository.findById(userId).orElseThrow(); // Реализовать ошибку
+        redisTokenStore.deleteAllRefreshToken(targetUserId);
+        redisTokenStore.addAllAccessTokenInBlackList(targetUserId);
         usersRepository.delete(user);
-        // После удаления пользователя стоит удалить его токены access для всех сессий добавить в blackList
-        // refresh по всюду удалить
     }
 
 
-    // todo: Блокировка пользователя в системе
+    /** Блокировка пользователя в системе <br>
+     * с выходом пользователя из всех активных сессий
+     */
     @PreAuthorize("hasAnyRole('ADMIN')")
     @Transactional
-    public void blockedUserInSystem(UUID userId){
-        Users user = usersRepository.findById(userId).orElseThrow();
-        if(!user.getStatus().isBlocked()){
+    public void blockedUserInSystem(UUID targetId, UUID currentId) {
+        Users user = usersRepository.findById(targetId)
+                .orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
+        UUID createdBy = usersRepository.findCreatedBy(currentId);
+        if(user.getId().equals(createdBy) || user.getFirstName().equals("System")){
+            log.warn("Попытка заблокировать создателя/system админа: {}", targetId);
+            throw new UserBlockedForbiddenException("Попытка заблокировать создателя, либо system админа");
+        }
+
+        if (!user.getStatus().isBlocked()) {
             user.setStatus(UserStatus.BLOCKED);
         }
-        // После блокировки пользователя, нужно будет сделать для него logout для всех сессий
-        // Чтобы пользователь не смог пользоваться приложением
+        redisTokenStore.addAllAccessTokenInBlackList(targetId);
+        redisTokenStore.deleteAllRefreshToken(targetId);
+
     }
 
-    // todo: Разблокирование пользователя в системе
+    /** Разблокировать пользователя в системе
+     */
     @PreAuthorize("hasAnyRole('ADMIN')")
     @Transactional
-    public void unblockedUserInSystem(UUID userId){
-        Users user = usersRepository.findById(userId).orElseThrow();
-        if(!user.getStatus().isBlocked()){
-            throw new AuthException(""); // ДОБАВИТЬ КАСТОМНУЕ ИСКЛЮЧЕНИЕ
+    public void unblockedUserInSystem(UUID targetId) {
+        Users user = usersRepository.findById(targetId)
+                .orElseThrow(()-> new UserNotFoundException("Пользователь не найден"));
+        if (!user.getStatus().isBlocked()) {
+            return;
         }
-        user.setStatus(UserStatus.ACTIVE);
+        user.setStatus(UserStatus.PENDING);
         usersRepository.save(user);
-        log.info("Пользователь: {} разблокирован", userId);
     }
 
-    // todo: Получение информации о себе пользователем
-    @PreAuthorize("hasAnyRole('USER')")
-    public UserProfile getMyProfile(UUID userId){
-        Users user = usersRepository.findById(userId).orElseThrow();
+    /** Получение краткой информации о своем профили в системе
+     * @return краткая информация о профиле
+     */
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'USER')")
+    public UserProfileDto getMyProfile(UUID myId) {
+        Users user = usersRepository.findById(myId)
+                .orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
         return usersMapper.toMyProfile(user);
     }
 
-    // todo: Изменение данных о пользователе в системе (ВОПРОС ОБ УРОВНЕ ДОСТУПНОСТИ, СКОРЕЕ ВСЕГО MANAGER)
-    // Но тут нужно все таки обдумать момент, кому это фактически будет доступно как в банковской системе
+    /** Частичное изменения данных о профиле в системе
+     */
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'USER')")
     @Transactional
-    public void updateMyProfile(UUID userId, UpdateUserProfileRequestDto request){
-        Users user = usersRepository.findById(userId).orElseThrow();
-        if(request.getFirstName() != null){
+    public void updateMyProfile(UUID myId, UpdateUserProfileRequestDto request) {
+        Users user = usersRepository.findById(myId)
+                .orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
+        if (request.getFirstName() != null && !request.getFirstName().isEmpty()) {
             user.setFirstName(request.getFirstName());
         }
-        if(request.getLastName() != null){
+        if (request.getLastName() != null && !request.getLastName().isEmpty()) {
             user.setLastName(request.getLastName());
         }
-        if(request.getEmail() != null){
+        if (request.getEmail() != null && !request.getEmail().isEmpty()) {
             user.setEmail(request.getEmail());
         }
-        if(request.getPhoneNumber() != null){
+        if (request.getPhoneNumber() != null && !request.getPhoneNumber().isEmpty()) {
             user.setPhoneNumber(request.getPhoneNumber());
         }
     }
 
-    // todo: Смена пароля пользователя с проверкой старого пароля
-    @PreAuthorize("hasAnyRole('USER')")
+    /** Смена пароля пользователя с проверкой текущего password в системе, <br>
+     * при удачной смене, пользователь выходит со всех активных сессий
+     */
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'USER')")
     @Transactional
-    public void changePassword(UUID userId, ChangePasswordRequestDto request){
-        Users user = usersRepository.findById(userId).orElseThrow();
-        if(!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())){
-            log.warn("Неверный текущей пароль для пользователя: {}", userId);
-            throw new AuthException("Неверный текущей пароль"); // Добавить кастомное исключение
+    public void changePassword(UUID myId, ChangePasswordRequestDto request) {
+        Users user = usersRepository.findById(myId)
+                .orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            log.warn("Текущей пароль пользователя: {}, неверный ", myId);
+            throw new InvalidPasswordException("Старый пароль неверный");
         }
-        if(!request.getNewPassword().equals(request.getConfirmPassword())){
-            throw new AuthException("Пароль для подтверждения не верный, отмена операции"); // Добавить кастомное исключение
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            log.warn("Новая пара паролей не совпадает");
+            throw new NotCoincidencePasswordException("Новая пара паролей не совпадает");
         }
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        // Добавить так же удаление временного пароля, если такой еще остался
+        redisTokenStore.deleteAllRefreshToken(myId);
+        redisTokenStore.addAllAccessTokenInBlackList(myId);
         usersRepository.save(user);
-        // Тут должны удалиться абсолютно все refresh токенов для прошлых session
-        // + добавиться в черный список все остальные accessTokens
-        log.info("Пароль успешно изменен для пользователя: {}", userId);
     }
 
-    // todo: Сгенерировать новый временный пароль для пользователя
+    /** Сменя роли пользователя в системе, <br>
+     * с проверкой является ли пользователь создателем
+     */
+    @PreAuthorize("hasAnyRole('ADMIN')")
+    @Transactional
+    public void changeUserRole(UUID targetId, Role newRole, UUID currentUserId) {
+        Users user = usersRepository.findById(targetId)
+                .orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
+        UUID createdId = usersRepository.findCreatedBy(currentUserId);
+        if (user.getId().equals(createdId) || user.getFirstName().equals("SYSTEM")) {
+            log.warn("Пользователь: {}, является создателем", targetId);
+            throw new UserChangeRoleException("Попытка сменить роль создателю, либо system админу");
+        }
+        user.setRole(newRole);
+        usersRepository.save(user);
+    }
+
+    /** Смена пароля пользователя на автоматически сгенерированный системы,
+     * при успешном входе пользователь выходит из всех активных сессий
+     */
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @Transactional
-    public void resetPassword(UUID userId){
-        Users user = usersRepository.findById(userId).orElseThrow();
+    public void resetPassword(UUID targetId) {
+        Users user = usersRepository.findById(targetId)
+                .orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
         String newPassword = PasswordGenerated.generatedPassword();
-        log.info("Пароль был обновлен для пользователя: {}", userId);
-        // Тут будет логика отправки пользователю PUSH уведомления с новыми данными, например на почту
+        user.setPassword(passwordEncoder.encode(newPassword));
+        redisTokenStore.addAllAccessTokenInBlackList(targetId);
+        redisTokenStore.deleteAllRefreshToken(targetId);
+        // todo: Тут будет логика отправки пользователю PUSH уведомления с новыми данными, например на почту
     }
+
 
 }

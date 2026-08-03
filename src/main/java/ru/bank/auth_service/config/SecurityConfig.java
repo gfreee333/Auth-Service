@@ -39,7 +39,7 @@ public class SecurityConfig {
                         "/auth/login","/auth/refresh/tokens") // Подумать, а точно ли можно всем давать доступ к refresh
                         .permitAll()
                         .requestMatchers("/admin/**", "/auth/actuator/**").hasRole("ADMIN")
-                        .requestMatchers("/manager/**").hasRole("MANAGER")
+                        .requestMatchers("/manager/**").hasAnyRole("MANAGER", "ADMIN")
                         .requestMatchers("/user/**").hasRole("USER")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

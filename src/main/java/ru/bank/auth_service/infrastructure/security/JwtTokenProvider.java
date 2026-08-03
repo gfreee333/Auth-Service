@@ -3,13 +3,12 @@ package ru.bank.auth_service.infrastructure.security;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 import ru.bank.auth_service.exception.custom.auth.InvalidTokenException;
-import ru.bank.auth_service.model.dto.response.TokenPair;
+import ru.bank.auth_service.infrastructure.security.token.TokenPair;
 import ru.bank.auth_service.model.entity.Users;
 import ru.bank.auth_service.model.enums.Role;
 import ru.bank.auth_service.model.enums.UserStatus;
@@ -25,7 +24,6 @@ import java.util.Date;
 import java.util.UUID;
 
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class JwtTokenProvider {
 
@@ -46,7 +44,8 @@ public class JwtTokenProvider {
         this.publicKey = loadPublicKey();
     }
 
-    // todo: Загружаем закрытый ключ для подписи токена
+    /** Загружаем закрытый ключ для подписи токена
+     * */
     public PrivateKey loadPrivateKey() throws Exception {
         String keyContent = new String(
                 new ClassPathResource(privateKeyPath).getInputStream().readAllBytes(),
@@ -63,7 +62,8 @@ public class JwtTokenProvider {
         return keyFactory.generatePrivate(keySpec);
     }
 
-    // todo: Загружаем публичный ключ для проверки валидности токена
+    /** Загружаем публичный ключ для проверки валидности токена
+     * */
     private PublicKey loadPublicKey() throws Exception {
         String keyContext = new String(
                 new ClassPathResource(publicKeyPath).getInputStream().readAllBytes(),
@@ -79,7 +79,8 @@ public class JwtTokenProvider {
         return keyFactory.generatePublic(keySpec);
     }
 
-    // todo: Создание builder для jwt токенов
+    /** Создание builder для jwt токенов
+     * */
     private String buildToken(Users user, Long expiration, String sessionId) {
         return Jwts.builder()
                 .subject(user.getEmail())
@@ -94,7 +95,8 @@ public class JwtTokenProvider {
                 .compact();
     }
 
-    // todo: Генерация пары токенов access + refresh
+    /** Генерация пары токенов access + refresh
+     * */
     public TokenPair generatedTokenPair(Users user) {
         String sessionId = UUID.randomUUID().toString();
         String accessToken = buildToken(user, accessTokenExpiration, sessionId);
@@ -103,7 +105,8 @@ public class JwtTokenProvider {
         return new TokenPair(accessToken, refreshToken);
     }
 
-    // todo: Проверка валидности токена
+    /** Проверка валидности токена
+     * */
     public Claims validateToken(String token) {
         return Jwts.parser()
                 .verifyWith(publicKey)
@@ -112,7 +115,8 @@ public class JwtTokenProvider {
                 .getPayload();
     }
 
-    // todo: Метод для проверки валидности токена
+    /** Метод для проверки валидности токена
+     * */
     public boolean isValidToken(String token) {
         try {
             validateToken(token);
@@ -123,19 +127,21 @@ public class JwtTokenProvider {
         }
     }
 
-    // todo: Метод для проверки является ли токен невалидным
+    /** Метод для проверки является ли токен невалидным
+     * */
     public boolean isInvalidToken(String token) {
         return !isValidToken(token);
     }
 
-
-    // todo: Получение остатка времени жизни токена
+    /** Получение остатка времени жизни токена
+     * */
     public Long getExpirationFromToken(String token) {
         Date expiration = validateToken(token).getExpiration();
         return expiration.getTime() - System.currentTimeMillis();
     }
 
-    // todo: Извлечение sessionId из токена
+    /** Извлечение sessionId из токена
+     * */
     public String getSessionIdFromToken(String token) {
         String sessionId = validateToken(token).get("sessionId", String.class);
         if (sessionId == null) {
@@ -145,7 +151,8 @@ public class JwtTokenProvider {
         return sessionId;
     }
 
-    // todo: Извлечение userId из токена
+    /** Извлечение email из токена
+     * */
     public UUID getUserIdFromToken(String token) {
         String userIdStr = validateToken(token).get("userId", String.class);
         if (userIdStr == null) {
@@ -160,7 +167,8 @@ public class JwtTokenProvider {
         }
     }
 
-    // todo: Извлечение email из токена
+    /** Извлечение email из токена
+     * */
     public String getEmailFromToken(String token) {
         String email = validateToken(token).getSubject();
         if (email == null) {
@@ -170,7 +178,8 @@ public class JwtTokenProvider {
         return email;
     }
 
-    // todo: Извлечение статуса
+    /** Извлечение статуса
+     * */
     public UserStatus getUserStatusFromToken(String token) {
         String statusSTR = validateToken(token).get("status", String.class);
         if (statusSTR == null) {
@@ -185,7 +194,8 @@ public class JwtTokenProvider {
         }
     }
 
-    // todo: Извлечение role из токена
+    /** Извлечение role из токена
+     * */
     public Role getRoleFromToken(String token) {
         String roleStr = validateToken(token).get("role", String.class);
         if (roleStr == null) {

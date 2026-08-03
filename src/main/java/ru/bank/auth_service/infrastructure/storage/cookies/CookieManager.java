@@ -23,44 +23,44 @@ public class CookieManager {
     private static final boolean COOKIES_SECURE = true;
     private static final String COOKIES_SAME_SITE = "Strict";
 
-    // todo: Добавление access в Cookie
+    /** Добавление access в Cookie
+     * */
     public void addAccessTokenCookie(HttpServletResponse response, String token){
         addCookies(response, ACCESS_COOKIE_NAME, token, accessTokenExpiration);
     }
 
-    // todo: Добавление refresh в Cookie
+    /** Добавление refresh в Cookie
+     * */
     public void addRefreshTokenCookie(HttpServletResponse response, String token){
         addCookies(response, REFRESH_COOKIE_NAME, token, refreshTokenExpiration);
     }
 
-    // todo: Удаление access токена из Cookies
+    /** Удаление access токена из Cookies
+     * */
     public void deleteAccessTokenCookies(HttpServletResponse response){
         deleteCookies(response, ACCESS_COOKIE_NAME);
     }
 
-    // todo: Удаление refresh токена из Cookies
+    /** Удаление refresh токена из Cookies
+     * */
     public void deleteRefreshTokenCookies(HttpServletResponse response){
         deleteCookies(response, REFRESH_COOKIE_NAME);
     }
 
-    // todo: Общий метод для очистки всех cookies
-    public void clearAllCookies(HttpServletResponse response){
-        deleteAccessTokenCookies(response);
-        deleteRefreshTokenCookies(response);
-    }
-
-    // todo: Чтение access из Cookies
+    /** Чтение access из Cookies
+     * */
     public String getAccessTokenFromCookie(HttpServletRequest request){
         return getCookieValue(request, ACCESS_COOKIE_NAME);
     }
 
-    // todo: Чтение refresh из Cookies
+    /** Чтение refresh из Cookies
+     * */
     public String getRefreshTokenFromCookie(HttpServletRequest request){
         return getCookieValue(request, REFRESH_COOKIE_NAME);
     }
 
-
-    // todo: Добавление данных в Cookie
+    /** Добавление данных в Cookie
+     * */
     private void addCookies(HttpServletResponse response, String name, String value, Long maxAge){
         Cookie cookie = new Cookie(name, value);
         cookie.setHttpOnly(COOKIES_HTTP_ONLY);
@@ -72,7 +72,8 @@ public class CookieManager {
         log.debug("Cookies добавлены [ name: {} | path: {} | maxAge: {} ]", name, COOKIES_PATH, maxAge / 1000);
     }
 
-    // todo: Удаление данных Cookie
+    /** Удаление данных Cookie
+     * */
     private void deleteCookies(HttpServletResponse response, String name){
         Cookie cookie = new Cookie(name, null);
         cookie.setHttpOnly(COOKIES_HTTP_ONLY);
@@ -83,7 +84,8 @@ public class CookieManager {
         log.debug("Cookie удален name: {}", name);
     }
 
-    // todo: Вспомогательный метод для получения данных
+    /** Вспомогательный метод для получения данных
+     * */
     private String getCookieValue(HttpServletRequest request, String cookieName){
         Cookie[] cookies = request.getCookies();
         if(cookies != null){

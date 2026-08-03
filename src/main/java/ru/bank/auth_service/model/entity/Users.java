@@ -41,8 +41,10 @@ public class Users {
                     "Максимальное допустимое значение password 100")
     private String password;
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private UserStatus status = UserStatus.PENDING;
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private Role role = Role.USER;
     @CreationTimestamp
     private LocalDateTime createdAt;

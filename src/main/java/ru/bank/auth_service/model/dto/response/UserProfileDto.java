@@ -2,7 +2,7 @@ package ru.bank.auth_service.model.dto.response;
 
 import ru.bank.auth_service.model.enums.UserStatus;
 
-public record UserProfile(
+public record UserProfileDto(
     String firstName,
     String lastName,
     String email,

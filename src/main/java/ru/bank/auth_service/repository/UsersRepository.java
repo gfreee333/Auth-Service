@@ -1,6 +1,8 @@
 package ru.bank.auth_service.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import ru.bank.auth_service.model.entity.Users;
 
@@ -13,4 +15,6 @@ public interface UsersRepository extends JpaRepository<Users, UUID> {
     boolean existsByPhoneNumber(String phoneNumber);
     Optional<Users> findByEmail(String email);
     Optional<Users> findByPhoneNumber(String phoneNumber);
+    @Query("SELECT u.createdBy from Users u where u.id = :currentId")
+    UUID findCreatedBy(@Param("currentId") UUID currentId);
 }

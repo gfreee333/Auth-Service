@@ -1,6 +1,7 @@
 package ru.bank.auth_service.infrastructure.security;
 
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ import ru.bank.auth_service.model.enums.UserStatus;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -49,7 +51,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
-                                    FilterChain filterChain) throws IOException {
+                                    FilterChain filterChain) throws ServletException, IOException {
         try {
             String token = extractToken(request);
             if (token == null) {
@@ -67,13 +69,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } catch (ClientInBlackListException ex) {
             log.warn("Доступ запрещен: {}", ex.getMessage());
             response.sendError(HttpServletResponse.SC_FORBIDDEN, ex.getMessage());
-        } catch (Exception ex) {
-            log.warn("Неожиданная ошибка: {}", ex.getMessage());
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Внутренняя ошибка");
         }
     }
 
-    // todo: Получение access + refresh токенов
+    /** Получение access + refresh токенов
+     * */
     private String extractToken(HttpServletRequest request) {
         ClientType clientType = clientTypeResolver.resolve(request);
         if(clientType.isWeb()){
@@ -89,7 +89,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return null;
     }
 
-    // todo: Проверка валидности токенов
+    /** Проверка валидности токенов
+     * */
     private void validateToken(String token) {
         if (redisTokenStore.checkAccessTokenBlackList(token)) {
             log.warn("Токен находиться в черном списке");
@@ -106,18 +107,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
     }
 
-    // todo: Установка аутентификации
+    /** Установка аутентификации
+     * */
     private void setAuthentication(HttpServletRequest request, String token) {
         String email = jwtTokenProvider.getEmailFromToken(token);
         Role role = jwtTokenProvider.getRoleFromToken(token);
+        UUID userId = jwtTokenProvider.getUserIdFromToken(token);
+        CustomUserDetails details = new CustomUserDetails(email, role, userId);
         UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                email,
+                details,
                 null,
                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role))
         );
         authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
         SecurityContextHolder.getContext().setAuthentication(authToken);
-        log.debug("Пользователь аутентифицирован: {} с ролью: {}", email, role);
+        log.debug("Пользователь: {} аутентифицирован с email: {} и ролью: {}", userId, email, role);
     }
 
 

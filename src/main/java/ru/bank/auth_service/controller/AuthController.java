@@ -10,7 +10,7 @@ import ru.bank.auth_service.infrastructure.util.ClientTypeResolver;
 import ru.bank.auth_service.model.dto.request.LoginRequestDto;
 import ru.bank.auth_service.model.dto.response.LoginResponseDto;
 import ru.bank.auth_service.model.enums.ClientType;
-import ru.bank.auth_service.service.AuthenticationService;
+import ru.bank.auth_service.service.LoginService;
 import ru.bank.auth_service.service.LogoutService;
 import ru.bank.auth_service.service.TokenRefreshService;
 
@@ -19,7 +19,7 @@ import ru.bank.auth_service.service.TokenRefreshService;
 @RequestMapping("/auth")
 public class AuthController {
 
-    private final AuthenticationService authService;
+    private final LoginService loginService;
     private final LogoutService logoutService;
     private final TokenRefreshService tokenRefreshService;
     private final ClientTypeResolver clientTypeResolver;
@@ -31,7 +31,7 @@ public class AuthController {
             HttpServletResponse servletResponse
     ) {
         ClientType clientType = clientTypeResolver.resolve(servletRequest);
-        LoginResponseDto result = authService.login(request, servletResponse, clientType);
+        LoginResponseDto result = loginService.login(request, servletResponse, clientType);
         return ResponseEntity.ok().body(result);
     }
 

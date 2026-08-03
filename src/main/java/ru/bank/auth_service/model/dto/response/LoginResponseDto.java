@@ -8,7 +8,6 @@ public record LoginResponseDto(
         String message,
         UUID userId,
         String role,
-        boolean firstLogin,
         String accessToken,
         String refreshToken,
         ClientType clientType
