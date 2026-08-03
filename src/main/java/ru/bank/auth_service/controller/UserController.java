@@ -54,7 +54,7 @@ public class UserController {
         return ResponseEntity.ok().body(result);
     }
 
-    @DeleteMapping("/{targetId}")
+    @DeleteMapping("/delete/{targetId}")
     public ResponseEntity<Void> deleteUserById(
             @PathVariable("targetId") UUID targetId) {
         UUID currentId = userSecurityContext.getCurrentUserId();

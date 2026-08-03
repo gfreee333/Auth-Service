@@ -36,13 +36,28 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth.requestMatchers(
-                        "/auth/login","/auth/refresh/tokens") // Подумать, а точно ли можно всем давать доступ к refresh
+                        "/auth/login","/auth/refresh/tokens")
                         .permitAll()
-                        .requestMatchers("/admin/**", "/auth/actuator/**").hasRole("ADMIN")
-                        .requestMatchers("/manager/**").hasAnyRole("MANAGER", "ADMIN")
-                        .requestMatchers("/user/**").hasRole("USER")
-                        .anyRequest().authenticated())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                        .requestMatchers(
+                                "users/blocked/**",
+                                "/delete/users/{targetId}",
+                                "users/unblocked/**",
+                                "users/*/role")
+                        .hasRole("ADMIN")
+                        .requestMatchers(
+                                "/users",
+                                "users/registration",
+                                "/users/email",
+                                "/users/phone",
+                                "users/{targetId}",
+                                "/users/password/reset/**"
+                        ).hasAnyRole("ADMIN", "MANAGER")
+                        .requestMatchers(
+                                "/users/profile",
+                                "/users/password",
+                                "/auth/logout"
+                        ).authenticated()
+                ).addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
