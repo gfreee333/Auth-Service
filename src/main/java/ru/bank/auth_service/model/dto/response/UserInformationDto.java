@@ -13,7 +13,7 @@ public record UserInformationDto(
         String phoneNumber,
         String email,
         Role role,
-        UserStatus userStatus,
+        UserStatus status,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         LocalDateTime activatedAt

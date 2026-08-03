@@ -1,6 +1,5 @@
 package ru.bank.auth_service.model.dto.request;
 
-import jakarta.validation.constraints.Email;
 import lombok.Data;
 
 @Data

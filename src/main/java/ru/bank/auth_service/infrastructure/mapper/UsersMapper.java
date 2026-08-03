@@ -5,7 +5,7 @@ import org.mapstruct.Mapping;
 import ru.bank.auth_service.model.dto.request.RegistrationRequestDto;
 import ru.bank.auth_service.model.dto.response.RegistrationResponseDto;
 import ru.bank.auth_service.model.dto.response.UserInformationDto;
-import ru.bank.auth_service.model.dto.response.UserProfile;
+import ru.bank.auth_service.model.dto.response.UserProfileDto;
 import ru.bank.auth_service.model.entity.Users;
 
 @Mapper(componentModel = "spring")
@@ -21,9 +21,10 @@ public interface UsersMapper {
     @Mapping(target = "message", constant = "Пользователь зарегистрирован в системе")
     RegistrationResponseDto toRegistrationResponse(Users users);
 
+
     UserInformationDto toUserInformationResponse(Users user);
 
-    UserProfile toMyProfile(Users user);
+    UserProfileDto toMyProfile(Users user);
 
 
 }

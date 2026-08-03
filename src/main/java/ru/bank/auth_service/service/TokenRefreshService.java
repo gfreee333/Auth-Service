@@ -6,14 +6,17 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.bank.auth_service.exception.custom.auth.InvalidTokenException;
-import ru.bank.auth_service.exception.custom.auth.TokenReuseAttemptException;
+import ru.bank.auth_service.exception.custom.auth.OldTokenUseException;
 import ru.bank.auth_service.exception.custom.user.UserNotFoundException;
 import ru.bank.auth_service.infrastructure.security.JwtTokenProvider;
+import ru.bank.auth_service.infrastructure.security.token.TokenGenerator;
 import ru.bank.auth_service.infrastructure.storage.cookies.CookieManager;
 import ru.bank.auth_service.infrastructure.storage.redis.RedisTokenStore;
-import ru.bank.auth_service.infrastructure.strategy.refresh.RefreshResponseProcessorFactory;
-import ru.bank.auth_service.infrastructure.strategy.refresh.RefreshResponseProcessorStrategy;
-import ru.bank.auth_service.model.dto.response.TokenPair;
+import ru.bank.auth_service.infrastructure.strategy.client.ClientStrategy;
+import ru.bank.auth_service.infrastructure.strategy.client.ClientStrategyFactory;
+import ru.bank.auth_service.infrastructure.security.token.TokenInvalidation;
+import ru.bank.auth_service.infrastructure.security.token.TokenInvalidationResult;
+import ru.bank.auth_service.infrastructure.security.token.TokenPair;
 import ru.bank.auth_service.model.dto.response.LoginResponseDto;
 import ru.bank.auth_service.model.entity.Users;
 import ru.bank.auth_service.model.enums.ClientType;
@@ -21,106 +24,77 @@ import ru.bank.auth_service.repository.UsersRepository;
 
 import java.util.UUID;
 
+
+/**
+ * <p><b>Сервис обновление токенов пользователя в системе(RefreshTokenService)</b></p>
+ * <p><b>Описание: Обеспечивает получение новой пары refresh + access токенов</b></p>
+ * <p><b>Поддержка клиентов:</b></p>
+ * <ul>
+ *   <li>WEB</li>
+ *   <li>MOBILE</li>
+ * </ul>
+ *
+ * @see RedisTokenStore
+ * @see UsersRepository
+ * @see ClientStrategyFactory
+ * @see TokenInvalidation
+ * @see TokenGenerator
+ */
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class TokenRefreshService {
 
-    private final RefreshResponseProcessorFactory refreshResponseProcessorFactory;
-    private final JwtTokenProvider jwtTokenProvider;
     private final RedisTokenStore redisTokenStore;
     private final UsersRepository usersRepository;
-    private final CookieManager cookieManager;
+    private final ClientStrategyFactory clientStrategyFactory;
+    private final TokenInvalidation tokenInvalidation;
+    private final TokenGenerator tokenGenerator;
 
-    // todo: refresh - логика для обновления токенов пользователя
+    /**
+     * <p><b>Метод: refreshToken</b></p>
+     * <p><b>Описание: Обновление токенов на основе refresh токена</b></p>
+     *
+     * <p><b>Основные шаги:</b></p>
+     * <ol>
+     *   <li>Определение стратегии генерации</li>
+     *   <li>Получение пары токенов из (Cookies - Web / Header - Mobile)</li>
+     *   <li>Инвалидация access токена</li>
+     *   <li>Проверка повторно использования устаревшего Refresh токена</li>
+     *   <li>Если проверка {@code false} инвалидация refresh токена</li>
+     *   <li>Получение пользователя из системы для будущей генерации JWT</li>
+     *   <li>Генерируем новую пару access/refresh токенов</li>
+     *   <li>Возвращаем ответ в зависимости от типа клиента</li>
+     * </ol>
+     *
+     * @param clientType тип клиента (Web/Mobile)
+     * @param request Http запрос для извлечения токенов
+     * @param response для обновления refresh/access токенов
+     * @return accessToken (Если тип клиента определен)/(null в противном случае)
+     * @throws OldTokenUseException попытка использовать, валидный устаревший токен
+     * @throws UserNotFoundException пользователь не найден в системе
+     */
     public LoginResponseDto refreshToken(HttpServletRequest request,
                                          HttpServletResponse response,
                                          ClientType clientType) {
         log.info("Попытка получения токенов для клиента: {}", clientType);
-        TokenPair oldTokenPair = extractTokens(request, clientType);
-        if (jwtTokenProvider.isInvalidToken(oldTokenPair.refreshToken())) {
-            log.warn("Невалидный refresh токен");
-            throw new InvalidTokenException("Невалидный refresh токен");
-        }
-        invalidateOldAccessToken(oldTokenPair.accessToken());
-        UUID oldUserId = jwtTokenProvider.getUserIdFromToken(oldTokenPair.refreshToken());
-        String oldSessionId = jwtTokenProvider.getSessionIdFromToken(oldTokenPair.refreshToken());
+        ClientStrategy strategy = clientStrategyFactory.getStrategy(clientType);
+        TokenPair oldTokenPair = strategy.extractTokens(request);
+        TokenInvalidationResult result = tokenInvalidation.invalidateAccessTokenOnly(oldTokenPair);
+        UUID oldUserId = result.userId();
+        String oldSessionId = result.sessionId();
         if(!redisTokenStore.existsRefreshToken(oldUserId, oldSessionId)){
-            log.warn("Попытка повторного использования refresh токена!!!");
-            redisTokenStore.deleteAllRefreshToken(oldUserId);
-            RefreshResponseProcessorStrategy clearProcessor = refreshResponseProcessorFactory.getProcessor(clientType);
-            clearProcessor.clearClientTokens(response);
-            throw new TokenReuseAttemptException("Подозрительная активность. Сброс всех активных сессий");
+            log.warn("Refresh токен устарел");
+            strategy.clearClientTokens(response);
+            throw new OldTokenUseException("Токен устарел");
         }
-
-        Users user = findAndValidateUser(oldUserId);
-        TokenPair newTokenPair = generatedNewTokens(user, oldSessionId);
-        RefreshResponseProcessorStrategy processor = refreshResponseProcessorFactory.getProcessor(clientType);
-        return processor.processRefreshResponse(user, newTokenPair.accessToken(), newTokenPair.refreshToken(), response);
-    }
-
-
-    // todo: Извлечение пары токенов access + refresh в зависимости от типа клиента
-    private TokenPair extractTokens(HttpServletRequest request, ClientType clientType) {
-        String accessToken = extractAccessToken(request, clientType);
-        String refreshToken = extractRefreshToken(request, clientType);
-        return new TokenPair(accessToken, refreshToken);
-    }
-
-    // todo: Извлечение Refresh токена в зависимости от типа клиента
-    private String extractRefreshToken(HttpServletRequest request, ClientType clientType) {
-        if (clientType.isWeb()) {
-            return cookieManager.getRefreshTokenFromCookie(request);
-        } else {
-            return request.getHeader("X-Refresh-Token");
-        }
-    }
-
-    // todo: Извлечение Access токена в зависимости от типа клиента
-    private String extractAccessToken(HttpServletRequest request, ClientType clientType) {
-        if (clientType.isWeb()) {
-            return cookieManager.getAccessTokenFromCookie(request);
-        } else {
-            String authHeader = request.getHeader("Authorization");
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                return authHeader.substring(7);
-            }
-        }
-        return null;
-    }
-
-    // todo: Проверка валидности access токена + добавление его в черный список
-    private void invalidateOldAccessToken(String oldAccessToken) {
-        if (oldAccessToken == null) {
-            log.debug("Access токен отсутствует в запросе");
-            return;
-        }
-        if(jwtTokenProvider.isValidToken(oldAccessToken)){
-            Long ttl = jwtTokenProvider.getExpirationFromToken(oldAccessToken);
-            redisTokenStore.addAccessTokenInBlackList(oldAccessToken, ttl);
-            log.debug("Старый access токен добавлен в BlackList");
-        } else {
-            log.debug("Старый access токен не является валидным/истекло время");
-        }
-    }
-
-
-    // todo: Проверка и получения данных о пользователе
-    private Users findAndValidateUser(UUID userId) {
-        return usersRepository.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException("Пользователь с id: {} " + userId + " не найден"));
-    }
-
-    // todo: Генерация новой пары токенов (access, refresh)
-    private TokenPair generatedNewTokens(Users user, String oldSessionId) {
-        TokenPair newTokenPair = jwtTokenProvider.generatedTokenPair(user);
-        String newSessionId = jwtTokenProvider.getSessionIdFromToken(newTokenPair.refreshToken());
-        Long refreshTtl = jwtTokenProvider.getExpirationFromToken(newTokenPair.refreshToken());
-        redisTokenStore.deleteRefreshToken(user.getId(), oldSessionId);
-        redisTokenStore.saveRefreshToken(user.getId(), newSessionId, newTokenPair.refreshToken(), refreshTtl);
-        log.debug("Новая обновленная пара токенов: (access: {}, refresh: {}, новая сессия: {}"
-                , newTokenPair.accessToken(), newTokenPair.refreshToken(), newSessionId);
-        return newTokenPair;
+        tokenInvalidation.invalidateRefreshTokenOnly(oldUserId, oldSessionId);
+        Users user = usersRepository.findById(oldUserId)
+                .orElseThrow(() -> new UserNotFoundException("Пользователь с id: {}" + oldUserId + " не найден"));
+        TokenPair newTokenPair = tokenGenerator.generatedTokens(user);
+        return strategy.processRefreshResponse(user, newTokenPair.accessToken(),
+                        newTokenPair.refreshToken(), response);
     }
 
 }

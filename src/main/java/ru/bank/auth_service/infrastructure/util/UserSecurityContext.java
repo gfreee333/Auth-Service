@@ -14,6 +14,24 @@ import java.util.UUID;
 @Slf4j
 public class UserSecurityContext {
 
+
+    /**
+     * <p><b>Метод: getCurrentUserId</b></p>
+     * <p><b>Описание: Получение userId текущего <br>
+     * аутентифицированного пользователя</b></p>
+     *
+     * <p><b>Основная логика:</b></p>
+     * <ol>
+     *   <li>Получение Authentication из SecurityContextHolder</li>
+     *   <li>Проверка наличия аутентификации</li>
+     *   <li>Извлечение CustomUserDetails из principal</li>
+     *   <li>Возврат userId из CustomUserDetails</li>
+     * </ol>
+     *
+     * @return {@link UUID} userId текущего пользователя
+     * @throws AuthException если пользователь не аутентифицирован <br>
+     *                       или не удалось извлечь userId
+     */
     public UUID getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -25,9 +43,8 @@ public class UserSecurityContext {
         if (principal instanceof CustomUserDetails) {
             return ((CustomUserDetails) principal).getUserId();
         }
-        log.error("Не удалось извлечь userId из SecurityContext");
+        log.warn("Не удалось извлечь userId из SecurityContext");
         throw new AuthException("Не удалось определить пользователя");
     }
-
 
 }

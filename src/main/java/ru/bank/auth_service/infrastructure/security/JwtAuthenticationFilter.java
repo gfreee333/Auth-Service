@@ -72,7 +72,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
     }
 
-    // todo: Получение access + refresh токенов
+    /** Получение access + refresh токенов
+     * */
     private String extractToken(HttpServletRequest request) {
         ClientType clientType = clientTypeResolver.resolve(request);
         if(clientType.isWeb()){
@@ -88,7 +89,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return null;
     }
 
-    // todo: Проверка валидности токенов
+    /** Проверка валидности токенов
+     * */
     private void validateToken(String token) {
         if (redisTokenStore.checkAccessTokenBlackList(token)) {
             log.warn("Токен находиться в черном списке");
@@ -105,7 +107,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
     }
 
-    // todo: Установка аутентификации
+    /** Установка аутентификации
+     * */
     private void setAuthentication(HttpServletRequest request, String token) {
         String email = jwtTokenProvider.getEmailFromToken(token);
         Role role = jwtTokenProvider.getRoleFromToken(token);

@@ -5,67 +5,56 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import ru.bank.auth_service.infrastructure.security.JwtTokenProvider;
-import ru.bank.auth_service.infrastructure.storage.redis.RedisTokenStore;
-import ru.bank.auth_service.infrastructure.strategy.logout.LogoutProcessorFactory;
-import ru.bank.auth_service.infrastructure.strategy.logout.LogoutProcessorStrategy;
-import ru.bank.auth_service.model.dto.response.TokenPair;
+import ru.bank.auth_service.infrastructure.strategy.client.ClientStrategy;
+import ru.bank.auth_service.infrastructure.strategy.client.ClientStrategyFactory;
+import ru.bank.auth_service.infrastructure.security.token.TokenInvalidation;
+import ru.bank.auth_service.infrastructure.security.token.TokenPair;
 import ru.bank.auth_service.model.enums.ClientType;
 
-import java.util.UUID;
+
+/**
+ * <p><b>Сервис выхода из системы</b></p>
+ * <p><b>Описание: Обеспечивает выход пользователя из системе</b></p>
+ * <p><b>Поддержка клиентов:</b></p>
+ * <ol>
+ *   <li>WEB</li>
+ *   <li>MOBILE</li>
+ * </ol>
+ *
+ * @see ClientStrategyFactory
+ * @see TokenInvalidation
+ */
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class LogoutService {
 
-    private final LogoutProcessorFactory logoutProcessorFactory;
-    private final JwtTokenProvider jwtTokenProvider;
-    private final RedisTokenStore redisTokenStore;
+    private final ClientStrategyFactory clientStrategyFactory;
+    private final TokenInvalidation tokenInvalidation;
 
-    // todo: logout - выход пользователя из системы
+    /**
+     * <p><b>Метод: Logout</b></p>
+     * <p><b>Описание: Выход пользователя из системы в рамках одной сессии</b></p>
+     * <p><b>Основная логика:</b></p>
+     * <ol>
+     *   <li>Выбор стратегии выхода из системы (Web/Mobile)</li>
+     *    <li>Генерация пары JWT токенов</li>
+     *    <li>Инвалидация токенов в системе</li>
+     *    <li>Очистка токенов на стороне клиента</li>
+     *  </ol>
+     * @param request    HTTP запрос для извлечения токенов
+     * @param response   HTTP ответ для очистки cookies
+     * @param clientType тип клиента (WEB или MOBILE)
+     */
     public void logout(HttpServletRequest request,
                        HttpServletResponse response,
                        ClientType clientType) {
-        log.info("Попытка выхода для клиента: {}", clientType);
-        TokenPair tokens = extractTokens(request, clientType);
-        UUID userId = jwtTokenProvider.getUserIdFromToken(tokens.refreshToken());
-        String sessionId = jwtTokenProvider.getSessionIdFromToken(tokens.refreshToken());
-        invalidateRefreshToken(tokens.refreshToken(), userId, sessionId);
-        invalidateAccessToken(tokens.accessToken());
-        clearClientTokens(response, clientType);
-        log.info("Выход выполнен для пользователя: {}, сессия: {}", userId, sessionId);
-    }
-
-    // todo: Извлечение токена из запроса в зависимости от типа клиента
-    private TokenPair extractTokens(HttpServletRequest request, ClientType clientType) {
-        LogoutProcessorStrategy processor = logoutProcessorFactory.getProcessor(clientType);
-        return processor.extractTokens(request);
-    }
-
-    // todo: Добавления access токена в blackList
-    private void invalidateAccessToken(String accessToken) {
-        if (jwtTokenProvider.isInvalidToken(accessToken)) {
-            return;
-        }
-        Long ttl = jwtTokenProvider.getExpirationFromToken(accessToken);
-        redisTokenStore.addAccessTokenInBlackList(accessToken, ttl);
-        log.debug("Access токен добавлен в черный список");
-    }
-
-    // todo: Удаление refresh токена из Redis для конкретной session
-    private void invalidateRefreshToken(String refreshToken, UUID userId, String sessionId) {
-        if (jwtTokenProvider.isInvalidToken(refreshToken)) {
-            return;
-        }
-        redisTokenStore.deleteRefreshToken(userId, sessionId);
-        log.debug("Refresh токен удален с userId: {}, сессия: {}", userId, sessionId);
-    }
-
-    // todo: Очистка токенов на стороне клиента
-    private void clearClientTokens(HttpServletResponse response, ClientType clientType) {
-        LogoutProcessorStrategy processor = logoutProcessorFactory.getProcessor(clientType);
-        processor.clearClientTokens(response);
+        ClientStrategy strategy = clientStrategyFactory.getStrategy(clientType);
+        TokenPair tokens = strategy.extractTokens(request);
+        tokenInvalidation.invalidateTokens(tokens);
+        strategy.clearClientTokens(response);
+        log.debug("Выход выполнен для клиента: {}", clientType);
     }
 
 }
