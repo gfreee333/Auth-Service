@@ -50,7 +50,6 @@ public class SecurityConfig {
                                 "/users/email",
                                 "/users/phone",
                                 "/users/{targetId}",
-
                                 "/users/password/reset/**"
                         ).hasAnyRole("ADMIN", "MANAGER")
                         .requestMatchers(
