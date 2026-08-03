@@ -39,17 +39,17 @@ public class SecurityConfig {
                                 "/auth/login","/auth/refresh/tokens")
                         .permitAll()
                         .requestMatchers(
-                                "users/blocked/**",
-                                "/delete/users/{targetId}",
-                                "users/unblocked/**",
-                                "users/*/role")
+                                "/users/blocked/**",
+                                "/users/delete/{targetId}",
+                                "/users/unblocked/**",
+                                "/users/*/role")
                         .hasRole("ADMIN")
                         .requestMatchers(
                                 "/users",
-                                "users/registration",
+                                "/users/registration",
                                 "/users/email",
                                 "/users/phone",
-                                "users/{targetId}",
+                                "/users/{targetId}",
                                 "/users/password/reset/**"
                         ).hasAnyRole("ADMIN", "MANAGER")
                         .requestMatchers(
