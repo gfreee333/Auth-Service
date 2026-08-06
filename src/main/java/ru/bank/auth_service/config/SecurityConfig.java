@@ -57,6 +57,7 @@ public class SecurityConfig {
                                 "/users/password",
                                 "/auth/logout"
                         ).authenticated()
+                        .anyRequest().authenticated()
                 ).addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
@@ -66,12 +67,8 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource(){
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of(
-                "http://localhost:3000",
-                "http://localhost:4200",
-                "http://localhost:5173",
-                "http://localhost:5500",
-                "http://127.0.0.1:5500",
                 "http://localhost:8090",
+                "http://localhost:8092",
                 "http://127.0.0.1:8090"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
