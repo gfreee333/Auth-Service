@@ -8,15 +8,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.bank.auth_service.exception.custom.duplicate.DuplicateEmailException;
 import ru.bank.auth_service.exception.custom.duplicate.DuplicatePhoneException;
-import ru.bank.auth_service.infrastructure.storage.redis.TempPasswordStore;
+import ru.bank.auth_service.infrastructure.kafka.OutboxEvent;
+import ru.bank.auth_service.infrastructure.kafka.OutboxEventStore;
 import ru.bank.auth_service.infrastructure.util.PasswordGenerated;
 import ru.bank.auth_service.infrastructure.mapper.UsersMapper;
+import ru.bank.auth_service.infrastructure.util.SimpleScrypt;
 import ru.bank.auth_service.model.dto.request.RegistrationRequestDto;
 import ru.bank.auth_service.model.dto.response.RegistrationResponseDto;
 import ru.bank.auth_service.model.entity.Users;
 import ru.bank.auth_service.repository.UsersRepository;
 
-import java.time.Duration;
 import java.util.UUID;
 
 @Service
@@ -26,8 +27,8 @@ public class RegistrationService {
 
     private final UsersRepository usersRepository;
     private final PasswordEncoder passwordEncoder;
+    private final OutboxEventStore eventStore;
     private final UsersMapper usersMapper;
-    private final TempPasswordStore tempPasswordStore;
 
     // todo: Регистрация пользователя в системе
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
@@ -39,12 +40,14 @@ public class RegistrationService {
         if (usersRepository.existsByPhoneNumber(request.getPhoneNumber())) {
             throw new DuplicatePhoneException(request.getPhoneNumber());
         }
-        String tempPassword = passwordEncoder.encode(PasswordGenerated.generatedPassword());
+        String tempPassword = PasswordGenerated.generatedPassword();
         Users user = usersMapper.toUserEntity(request);
-        user.setPassword(tempPassword);
+        user.setPassword(passwordEncoder.encode(tempPassword));
         user.setCreatedBy(createdBy);
         Users savedUser = usersRepository.save(user);
-        tempPasswordStore.saveInRedis(savedUser.getId(), tempPassword, Duration.ofHours(24));
+        String encryptedPassword = SimpleScrypt.encrypt(tempPassword);
+        OutboxEvent event = OutboxEvent.passwordEvent(savedUser, encryptedPassword);
+        eventStore.generate(event);
         log.info("Пользователь: {} успешно создан пользователем: {} ", savedUser.getId(), createdBy);
         return usersMapper.toRegistrationResponse(user);
     }

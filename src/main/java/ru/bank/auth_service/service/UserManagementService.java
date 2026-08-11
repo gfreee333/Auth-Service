@@ -12,9 +12,12 @@ import ru.bank.auth_service.exception.custom.user.UserBlockedForbiddenException;
 import ru.bank.auth_service.exception.custom.user.UserChangeRoleException;
 import ru.bank.auth_service.exception.custom.user.UserDeleteForbiddenException;
 import ru.bank.auth_service.exception.custom.user.UserNotFoundException;
+import ru.bank.auth_service.infrastructure.kafka.OutboxEvent;
+import ru.bank.auth_service.infrastructure.kafka.OutboxEventStore;
 import ru.bank.auth_service.infrastructure.mapper.UsersMapper;
 import ru.bank.auth_service.infrastructure.storage.redis.RedisTokenStore;
 import ru.bank.auth_service.infrastructure.util.PasswordGenerated;
+import ru.bank.auth_service.infrastructure.util.SimpleScrypt;
 import ru.bank.auth_service.model.dto.request.ChangePasswordRequestDto;
 import ru.bank.auth_service.model.dto.request.UpdateUserProfileRequestDto;
 import ru.bank.auth_service.model.dto.response.UserInformationDto;
@@ -36,8 +39,11 @@ public class UserManagementService {
     private final UsersMapper usersMapper;
     private final PasswordEncoder passwordEncoder;
     private final RedisTokenStore redisTokenStore;
+    private final OutboxEventStore outboxStore;
 
-    /** Получение детальной информации о всех пользователях в системе
+    /**
+     * Получение детальной информации о всех пользователях в системе
+     *
      * @return список пользователь в системе
      */
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
@@ -48,7 +54,9 @@ public class UserManagementService {
                 .toList();
     }
 
-    /** Получение детальной информации о пользователе по email
+    /**
+     * Получение детальной информации о пользователе по email
+     *
      * @return информация о конкретном пользователе
      */
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
@@ -58,7 +66,9 @@ public class UserManagementService {
         return usersMapper.toUserInformationResponse(user);
     }
 
-    /** Получение детальной информации о пользователе по id
+    /**
+     * Получение детальной информации о пользователе по id
+     *
      * @return информация о конкретном пользователе
      */
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
@@ -68,10 +78,11 @@ public class UserManagementService {
         return usersMapper.toUserInformationResponse(user);
     }
 
-    /** Получение детальной информации о пользователе по phoneNumber
+    /**
+     * Получение детальной информации о пользователе по phoneNumber
+     *
      * @return информация о конкретном пользователе
      */
-    // todo: Получение детальной информации о пользователе через phoneNumber (+)
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public UserInformationDto findUserByPhoneNumber(String phoneNumber) {
         Users user = usersRepository.findByPhoneNumber("+" + phoneNumber)
@@ -79,27 +90,30 @@ public class UserManagementService {
         return usersMapper.toUserInformationResponse(user);
     }
 
-    /** Удаления пользователя из системы по id <br>
+    /**
+     * Удаления пользователя из системы по id <br>
      * с выходом пользователя из всех активных сессий
      */
-    // todo: Удалить пользователя из системы (+)
     @PreAuthorize("hasAnyRole('ADMIN')")
     @Transactional
     public void deleteUserById(UUID targetUserId, UUID currentUserId) {
         Users user = usersRepository.findById(targetUserId)
                 .orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
         UUID createdId = usersRepository.findCreatedBy(currentUserId);
-        if(user.getId().equals(createdId) || user.getFirstName().equals("System")){
+        if (user.getId().equals(createdId) || user.getFirstName().equals("System")) {
             log.warn("Попытка удалить, аккаунт создателя, либо system админа: {}", targetUserId);
             throw new UserDeleteForbiddenException("Попытка удаления, создателя либо system админа");
         }
         redisTokenStore.deleteAllRefreshToken(targetUserId);
         redisTokenStore.addAllAccessTokenInBlackList(targetUserId);
         usersRepository.delete(user);
+        OutboxEvent event = OutboxEvent.deleteUserEvent(user);
+        outboxStore.generate(event);
     }
 
 
-    /** Блокировка пользователя в системе <br>
+    /**
+     * Блокировка пользователя в системе <br>
      * с выходом пользователя из всех активных сессий
      */
     @PreAuthorize("hasAnyRole('ADMIN')")
@@ -108,34 +122,41 @@ public class UserManagementService {
         Users user = usersRepository.findById(targetId)
                 .orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
         UUID createdBy = usersRepository.findCreatedBy(currentId);
-        if(user.getId().equals(createdBy) || user.getFirstName().equals("System")){
+        if (user.getId().equals(createdBy) || user.getFirstName().equals("System")) {
             log.warn("Попытка заблокировать создателя/system админа: {}", targetId);
             throw new UserBlockedForbiddenException("Попытка заблокировать создателя, либо system админа");
         }
-
         if (!user.getStatus().isBlocked()) {
             user.setStatus(UserStatus.BLOCKED);
         }
+        Users saved = usersRepository.save(user);
+        OutboxEvent event = OutboxEvent.blockedEvent(saved);
+        outboxStore.generate(event);
         redisTokenStore.addAllAccessTokenInBlackList(targetId);
         redisTokenStore.deleteAllRefreshToken(targetId);
 
     }
 
-    /** Разблокировать пользователя в системе
+    /**
+     * Разблокировать пользователя в системе
      */
     @PreAuthorize("hasAnyRole('ADMIN')")
     @Transactional
     public void unblockedUserInSystem(UUID targetId) {
         Users user = usersRepository.findById(targetId)
-                .orElseThrow(()-> new UserNotFoundException("Пользователь не найден"));
+                .orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
         if (!user.getStatus().isBlocked()) {
             return;
         }
         user.setStatus(UserStatus.PENDING);
-        usersRepository.save(user);
+        Users saved = usersRepository.save(user);
+        OutboxEvent event = OutboxEvent.unblockedEvent(saved);
+        outboxStore.generate(event);
     }
 
-    /** Получение краткой информации о своем профили в системе
+    /**
+     * Получение краткой информации о своем профили в системе
+     *
      * @return краткая информация о профиле
      */
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'USER')")
@@ -145,7 +166,8 @@ public class UserManagementService {
         return usersMapper.toMyProfile(user);
     }
 
-    /** Частичное изменения данных о профиле в системе
+    /**
+     * Частичное изменения данных о профиле в системе
      */
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'USER')")
     @Transactional
@@ -166,7 +188,8 @@ public class UserManagementService {
         }
     }
 
-    /** Смена пароля пользователя с проверкой текущего password в системе, <br>
+    /**
+     * Смена пароля пользователя с проверкой текущего password в системе, <br>
      * при удачной смене, пользователь выходит со всех активных сессий
      */
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'USER')")
@@ -183,13 +206,15 @@ public class UserManagementService {
             throw new NotCoincidencePasswordException("Новая пара паролей не совпадает");
         }
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        // Добавить так же удаление временного пароля, если такой еще остался
         redisTokenStore.deleteAllRefreshToken(myId);
         redisTokenStore.addAllAccessTokenInBlackList(myId);
-        usersRepository.save(user);
+        Users saved = usersRepository.save(user);
+        OutboxEvent event = OutboxEvent.passwordChangeEvent(saved);
+        outboxStore.generate(event);
     }
 
-    /** Сменя роли пользователя в системе, <br>
+    /**
+     * Сменя роли пользователя в системе, <br>
      * с проверкой является ли пользователь создателем
      */
     @PreAuthorize("hasAnyRole('ADMIN')")
@@ -206,7 +231,8 @@ public class UserManagementService {
         usersRepository.save(user);
     }
 
-    /** Смена пароля пользователя на автоматически сгенерированный системы,
+    /**
+     * Смена пароля пользователя на автоматически сгенерированный системы,
      * при успешном входе пользователь выходит из всех активных сессий
      */
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
@@ -216,10 +242,12 @@ public class UserManagementService {
                 .orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
         String newPassword = PasswordGenerated.generatedPassword();
         user.setPassword(passwordEncoder.encode(newPassword));
+        Users saved = usersRepository.save(user);
+        String encryptedPassword = SimpleScrypt.encrypt(newPassword);
+        OutboxEvent event = OutboxEvent.passwordEvent(saved, encryptedPassword);
+        outboxStore.generate(event);
         redisTokenStore.addAllAccessTokenInBlackList(targetId);
         redisTokenStore.deleteAllRefreshToken(targetId);
-        // todo: Тут будет логика отправки пользователю PUSH уведомления с новыми данными, например на почту
     }
-
 
 }
