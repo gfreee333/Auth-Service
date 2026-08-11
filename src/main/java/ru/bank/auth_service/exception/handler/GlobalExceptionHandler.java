@@ -11,8 +11,11 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import ru.bank.auth_service.exception.custom.auth.*;
+import ru.bank.auth_service.exception.custom.duplicate.DuplicateEmailException;
+import ru.bank.auth_service.exception.custom.duplicate.DuplicatePhoneException;
 import ru.bank.auth_service.exception.custom.password.InvalidPasswordException;
 import ru.bank.auth_service.exception.custom.password.NotCoincidencePasswordException;
+import ru.bank.auth_service.exception.custom.password.PasswordEncryptedKafkaException;
 import ru.bank.auth_service.exception.custom.user.UserChangeRoleException;
 import ru.bank.auth_service.exception.custom.user.UserDeleteForbiddenException;
 import ru.bank.auth_service.exception.custom.user.UserNotFoundException;
@@ -343,5 +346,58 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
+    /**
+     * <p><b>Ошибка: PasswordEncryptedKafkaException</b></p>
+     * <p><b>Описание: Возникает в результате неудачного<br>
+     * шифрования пароля для записи его в payload kafka <br>
+     * Возвращает HTTP 500 Internal_server_error</b></p>
+     *
+     * @param ex информация об ошибке
+     * @return ответ с кодом 500
+     */
+    @ExceptionHandler(PasswordEncryptedKafkaException.class)
+    public ResponseEntity<ErrorResponse> passwordEncryptedKafkaHandler(PasswordEncryptedKafkaException ex){
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage(),
+                HttpStatus.INTERNAL_SERVER_ERROR.value()
+        );
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
+
+    /**
+     * <p><b>Ошибка: DuplicatePhoneException</b></p>
+     * <p><b>Описание: Возникает в результате использования <br>
+     * дубликата Email при регистрации<br>
+     * Возвращает HTTP 409 Conflict</b></p>
+     *
+     * @param ex информация об ошибке
+     * @return ответ с кодом 409
+     */
+    @ExceptionHandler(DuplicateEmailException.class)
+    public ResponseEntity<ErrorResponse> duplicateEmailHandler(DuplicateEmailException ex){
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage(),
+                HttpStatus.CONFLICT.value()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    /**
+     * <p><b>Ошибка: DuplicatePhoneException</b></p>
+     * <p><b>Описание: Возникает в результате использования <br>
+     * дубликата PhoneNumber при регистрации<br>
+     * Возвращает HTTP 409 Conflict</b></p>
+     *
+     * @param ex информация об ошибке
+     * @return ответ с кодом 409
+     */
+    @ExceptionHandler(DuplicatePhoneException.class)
+    public ResponseEntity<ErrorResponse> duplicatePhoneHandler(DuplicatePhoneException ex){
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage(),
+                HttpStatus.CONFLICT.value()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
 
 }

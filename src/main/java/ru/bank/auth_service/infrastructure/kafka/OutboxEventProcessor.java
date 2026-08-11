@@ -6,50 +6,45 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 import ru.bank.auth_service.model.entity.Outbox;
-
-import java.time.LocalDateTime;
-import java.util.concurrent.TimeUnit;
+import ru.bank.auth_service.model.enums.OutboxStatus;
 
 @Component
 @Slf4j
-public class OutboxMessageSender {
+public class OutboxEventProcessor {
+
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
     private final OutboxStatusManager statusManager;
 
-    public OutboxMessageSender(@Qualifier("criticalKafkaTemplate") KafkaTemplate<String, String> kafkaTemplate,
-                               ObjectMapper objectMapper,
-                               OutboxStatusManager statusManager
-    ){
+    public OutboxEventProcessor(
+            @Qualifier("criticalKafkaTemplate") KafkaTemplate<String, String> kafkaTemplate,
+            ObjectMapper objectMapper,
+            OutboxStatusManager statusManager
+    ) {
         this.kafkaTemplate = kafkaTemplate;
         this.objectMapper = objectMapper;
         this.statusManager = statusManager;
     }
 
-    private static final int TIMEOUT_SECONDS = 5;
-
     public void sendProcess(Outbox event) {
-
-        if(event.getStatus().isTerminal()){
+        if (event.getStatus().isTerminal()) {
             return;
         }
-        if (event.getNextAttemptAt() != null && event.getNextAttemptAt().isAfter(LocalDateTime.now())) {
+        if (event.getStatus() != OutboxStatus.PROCESSING) {
+            log.warn("Событие: {} уже в процессе обработки", event.getId());
             return;
         }
         try {
-            MessageEvent messageEvent = objectMapper.readValue(
+            OutboxEvent outboxEvent = objectMapper.readValue(
                     event.getPayload(),
-                    MessageEvent.class
+                    OutboxEvent.class
             );
-            String topic = messageEvent.getEventType().getTopic();
-            kafkaTemplate.send(topic, String.valueOf(event.getId()), event.getPayload())
-                    .get(TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            String topic = outboxEvent.getEventType().getTopic();
+            kafkaTemplate.send(topic, String.valueOf(event.getUserId()), event.getPayload());
             statusManager.markAsSent(event);
         } catch (Exception ex) {
             log.warn("Ошибка отправки события: {} message: {}", event.getId(), ex.getMessage());
             statusManager.incrementRetry(event);
         }
-
     }
-
 }

@@ -17,11 +17,11 @@ import java.time.LocalDateTime;
 public class OutboxStatusManager {
 
     private final OutboxRepository outboxRepository;
-    private static final long INITIAL_DELAY_SEC = 1;
+    private static final long INITIAL_DELAY_SEC = 5;
     private static final int MAX_RETRY = 10;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void markAsSent(Outbox event){
+    public void markAsSent(Outbox event) {
         Outbox managed = outboxRepository.findById(event.getId()).orElseThrow();
         managed.setStatus(OutboxStatus.SENT);
         managed.setLastAttemptAt(LocalDateTime.now());
@@ -32,13 +32,14 @@ public class OutboxStatusManager {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void incrementRetry(Outbox event) {
+        log.info("ПОПАЛИ В INCREMENT МЕТОД");
         Outbox managed = outboxRepository.findById(event.getId()).orElseThrow();
         managed.setRetryCount(managed.getRetryCount() + 1);
         managed.setLastAttemptAt(LocalDateTime.now());
         if (managed.getRetryCount() >= MAX_RETRY) {
             managed.setStatus(OutboxStatus.DEAD);
             managed.setNextAttemptAt(null);
-            log.error("Событие: {} достигло лимитов retry, статус DEAD", managed.getId());
+            log.warn("Событие: {} достигло лимитов retry, статус DEAD", managed.getId());
         } else {
             managed.setStatus(OutboxStatus.PENDING);
             long delaySeconds = Math.min(3600, (long) Math.pow(2, managed.getRetryCount()) * INITIAL_DELAY_SEC);
