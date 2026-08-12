@@ -159,7 +159,6 @@ public class UserManagementService {
      *
      * @return краткая информация о профиле
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'USER')")
     public UserProfileDto getMyProfile(UUID myId) {
         Users user = usersRepository.findById(myId)
                 .orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
@@ -169,7 +168,6 @@ public class UserManagementService {
     /**
      * Частичное изменения данных о профиле в системе
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'USER')")
     @Transactional
     public void updateMyProfile(UUID myId, UpdateUserProfileRequestDto request) {
         Users user = usersRepository.findById(myId)
@@ -192,7 +190,6 @@ public class UserManagementService {
      * Смена пароля пользователя с проверкой текущего password в системе, <br>
      * при удачной смене, пользователь выходит со всех активных сессий
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'USER')")
     @Transactional
     public void changePassword(UUID myId, ChangePasswordRequestDto request) {
         Users user = usersRepository.findById(myId)
