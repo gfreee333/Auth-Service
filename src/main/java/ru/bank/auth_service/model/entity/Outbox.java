@@ -20,6 +20,7 @@ public class Outbox {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private UUID userId;
+    @Column(columnDefinition = "TEXT")
     private String payload;
     @Enumerated(EnumType.STRING)
     @Builder.Default
