@@ -14,6 +14,7 @@ public class OutboxEvent {
 
     private OutboxEventType eventType;
     private UUID userId;
+    private UUID eventId;
     private String firstName;
     private String lastName;
     private String email;
@@ -24,6 +25,7 @@ public class OutboxEvent {
         return OutboxEvent.builder()
                 .eventType(eventType)
                 .userId(user.getId())
+                .eventId(UUID.randomUUID())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
                 .email(user.getEmail())
