@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.bank.auth_service.exception.custom.password.InvalidPasswordException;
 import ru.bank.auth_service.exception.custom.password.NotCoincidencePasswordException;
+import ru.bank.auth_service.exception.custom.password.UserResetPasswordForbiddenException;
 import ru.bank.auth_service.exception.custom.user.UserBlockedForbiddenException;
 import ru.bank.auth_service.exception.custom.user.UserChangeRoleException;
 import ru.bank.auth_service.exception.custom.user.UserDeleteForbiddenException;
@@ -237,6 +238,11 @@ public class UserManagementService {
     public void resetPassword(UUID targetId) {
         Users user = usersRepository.findById(targetId)
                 .orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
+        UUID createdBy = user.getCreatedBy();
+        if (user.getId().equals(createdBy) || user.getFirstName().equals("System")) {
+            log.warn("Попытка сбросить пароль для создателя/system админа: {}", targetId);
+            throw new UserResetPasswordForbiddenException("Попытка заблокировать создателя, либо system админа");
+        }
         String newPassword = PasswordGenerated.generatedPassword();
         user.setPassword(passwordEncoder.encode(newPassword));
         Users saved = usersRepository.save(user);
