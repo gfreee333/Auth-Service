@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.bank.auth_service.exception.custom.password.InvalidPasswordException;
 import ru.bank.auth_service.exception.custom.password.NotCoincidencePasswordException;
+import ru.bank.auth_service.exception.custom.password.UserResetPasswordForbiddenException;
 import ru.bank.auth_service.exception.custom.user.UserBlockedForbiddenException;
 import ru.bank.auth_service.exception.custom.user.UserChangeRoleException;
 import ru.bank.auth_service.exception.custom.user.UserDeleteForbiddenException;
@@ -159,7 +160,6 @@ public class UserManagementService {
      *
      * @return краткая информация о профиле
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'USER')")
     public UserProfileDto getMyProfile(UUID myId) {
         Users user = usersRepository.findById(myId)
                 .orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
@@ -169,7 +169,6 @@ public class UserManagementService {
     /**
      * Частичное изменения данных о профиле в системе
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'USER')")
     @Transactional
     public void updateMyProfile(UUID myId, UpdateUserProfileRequestDto request) {
         Users user = usersRepository.findById(myId)
@@ -192,7 +191,6 @@ public class UserManagementService {
      * Смена пароля пользователя с проверкой текущего password в системе, <br>
      * при удачной смене, пользователь выходит со всех активных сессий
      */
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'USER')")
     @Transactional
     public void changePassword(UUID myId, ChangePasswordRequestDto request) {
         Users user = usersRepository.findById(myId)
@@ -240,6 +238,11 @@ public class UserManagementService {
     public void resetPassword(UUID targetId) {
         Users user = usersRepository.findById(targetId)
                 .orElseThrow(() -> new UserNotFoundException("Пользователь не найден"));
+        UUID createdBy = user.getCreatedBy();
+        if (user.getId().equals(createdBy) || user.getFirstName().equals("System")) {
+            log.warn("Попытка сбросить пароль для создателя/system админа: {}", targetId);
+            throw new UserResetPasswordForbiddenException("Попытка заблокировать создателя, либо system админа");
+        }
         String newPassword = PasswordGenerated.generatedPassword();
         user.setPassword(passwordEncoder.encode(newPassword));
         Users saved = usersRepository.save(user);

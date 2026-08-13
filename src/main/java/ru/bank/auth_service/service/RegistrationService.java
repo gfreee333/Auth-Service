@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.bank.auth_service.exception.custom.duplicate.DuplicateEmailException;
 import ru.bank.auth_service.exception.custom.duplicate.DuplicatePhoneException;
+import ru.bank.auth_service.exception.custom.user.InvalidUserFirstNameException;
 import ru.bank.auth_service.infrastructure.kafka.OutboxEvent;
 import ru.bank.auth_service.infrastructure.kafka.OutboxEventStore;
 import ru.bank.auth_service.infrastructure.util.PasswordGenerated;
@@ -39,6 +40,10 @@ public class RegistrationService {
         }
         if (usersRepository.existsByPhoneNumber(request.getPhoneNumber())) {
             throw new DuplicatePhoneException(request.getPhoneNumber());
+        }
+        if(request.getFirstName().equals("System")){
+            log.warn("Пользователь не может иметь имя System");
+            throw new InvalidUserFirstNameException("Имя пользователя не может быть System");
         }
         String tempPassword = PasswordGenerated.generatedPassword();
         Users user = usersMapper.toUserEntity(request);

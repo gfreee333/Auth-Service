@@ -39,6 +39,11 @@ public class SecurityConfig {
                                 "/auth/login","/auth/refresh/tokens")
                         .permitAll()
                         .requestMatchers(
+                                "/users/profile",
+                                "/users/password",
+                                "/auth/logout"
+                        ).authenticated()
+                        .requestMatchers(
                                 "/users/blocked/**",
                                 "/users/delete/{targetId}",
                                 "/users/unblocked/**",
@@ -52,11 +57,6 @@ public class SecurityConfig {
                                 "/users/{targetId}",
                                 "/users/password/reset/**"
                         ).hasAnyRole("ADMIN", "MANAGER")
-                        .requestMatchers(
-                                "/users/profile",
-                                "/users/password",
-                                "/auth/logout"
-                        ).authenticated()
                         .anyRequest().authenticated()
                 ).addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();

@@ -16,9 +16,8 @@ import ru.bank.auth_service.exception.custom.duplicate.DuplicatePhoneException;
 import ru.bank.auth_service.exception.custom.password.InvalidPasswordException;
 import ru.bank.auth_service.exception.custom.password.NotCoincidencePasswordException;
 import ru.bank.auth_service.exception.custom.password.PasswordEncryptedKafkaException;
-import ru.bank.auth_service.exception.custom.user.UserChangeRoleException;
-import ru.bank.auth_service.exception.custom.user.UserDeleteForbiddenException;
-import ru.bank.auth_service.exception.custom.user.UserNotFoundException;
+import ru.bank.auth_service.exception.custom.password.UserResetPasswordForbiddenException;
+import ru.bank.auth_service.exception.custom.user.*;
 import ru.bank.auth_service.exception.response.ErrorResponse;
 import ru.bank.auth_service.exception.response.ValidationErrorResponse;
 
@@ -38,7 +37,6 @@ public class GlobalExceptionHandler {
      * @param ex информация об ошибке
      * @return ответ с кодом 401
      */
-
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<ErrorResponse> authExceptionHandler(AuthException ex) {
         ErrorResponse error = new ErrorResponse(
@@ -56,7 +54,6 @@ public class GlobalExceptionHandler {
      * @param ex информация об ошибке
      * @return ответ с кодом 403
      */
-
     @ExceptionHandler(ClientInBlackListException.class)
     public ResponseEntity<ErrorResponse> clientInBlackListHandler(ClientInBlackListException ex) {
         ErrorResponse error = new ErrorResponse(
@@ -74,7 +71,6 @@ public class GlobalExceptionHandler {
      * @param ex информация об ошибке
      * @return ответ с кодом 401
      */
-
     @ExceptionHandler(ClientTypeNotSupportedException.class)
     public ResponseEntity<ErrorResponse> clientTypeNotSupportedHandler(ClientTypeNotSupportedException ex) {
         ErrorResponse error = new ErrorResponse(
@@ -92,7 +88,6 @@ public class GlobalExceptionHandler {
      * @param ex информация об ошибке
      * @return ответ с кодом 401
      */
-
     @ExceptionHandler(UnsupportedIdentifierException.class)
     public ResponseEntity<ErrorResponse> unsupportedIdentifierHandler(UnsupportedIdentifierException ex) {
         ErrorResponse error = new ErrorResponse(
@@ -110,7 +105,6 @@ public class GlobalExceptionHandler {
      * @param ex информация об ошибке
      * @return ответ с кодом 403
      */
-
     @ExceptionHandler(TokenInBlackListException.class)
     public ResponseEntity<ErrorResponse> tokenInBlackListHandler(TokenInBlackListException ex) {
         ErrorResponse error = new ErrorResponse(
@@ -128,7 +122,6 @@ public class GlobalExceptionHandler {
      * @param ex информация об ошибке
      * @return ответ с кодом 401
      */
-
     @ExceptionHandler(InvalidTokenException.class)
     public ResponseEntity<ErrorResponse> invalidTokenHandler(InvalidTokenException ex) {
         ErrorResponse error = new ErrorResponse(
@@ -146,7 +139,6 @@ public class GlobalExceptionHandler {
      * @param ex информация об ошибке
      * @return ответ с кодом 404
      */
-
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<ErrorResponse> userNotFoundHandler(UserNotFoundException ex) {
         ErrorResponse error = new ErrorResponse(
@@ -164,7 +156,6 @@ public class GlobalExceptionHandler {
      * @param ex информация об ошибке
      * @return ответ с кодом 401
      */
-
     @ExceptionHandler(OldTokenUseException.class)
     public ResponseEntity<ErrorResponse> tokenReuseAttemptHandler(OldTokenUseException ex) {
         ErrorResponse error = new ErrorResponse(
@@ -182,7 +173,6 @@ public class GlobalExceptionHandler {
      * @param ex информация об ошибке
      * @return ответ с кодом 401
      */
-
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ValidationErrorResponse> methodArgumentNotValidHandler(MethodArgumentNotValidException ex) {
         log.warn("Ошибка валидации: {}", ex.getMessage());
@@ -204,13 +194,12 @@ public class GlobalExceptionHandler {
 
     /**
      * <p><b>Ошибка: UserChangeRoleException </b></p>
-     * <p><b>Описание: Недостаточно прав для смены роли пользователя <br>
+     * <p><b>Описание: Недостаточно прав для смены роли пользователя в системе<br>
      * Возвращает HTTP 403 Forbidden</b></p>
      *
      * @param ex информация об ошибке
      * @return ответ с кодом 403
      */
-
     @ExceptionHandler(UserChangeRoleException.class)
     public ResponseEntity<ErrorResponse> userChangeRoleHandler(UserChangeRoleException ex) {
         ErrorResponse error = new ErrorResponse(
@@ -228,9 +217,42 @@ public class GlobalExceptionHandler {
      * @param ex информация об ошибке
      * @return ответ с кодом 403
      */
-
     @ExceptionHandler(UserDeleteForbiddenException.class)
     public ResponseEntity<ErrorResponse> userDeleteForbiddenHandler(UserDeleteForbiddenException ex) {
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage(),
+                HttpStatus.FORBIDDEN.value()
+        );
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    /**
+     * <p><b>Ошибка: UserBlockedForbiddenException</b></p>
+     * <p><b>Описание: Не достаточно прав для блокировки пользователя в системе<br>
+     * Возвращает HTTP 403 Forbidden</b></p>
+     *
+     * @param ex информация об ошибке
+     * @return ответ с кодом 403
+     */
+    @ExceptionHandler(UserBlockedForbiddenException.class)
+    public ResponseEntity<ErrorResponse> userBlockedForbiddenHandler(UserBlockedForbiddenException ex) {
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage(),
+                HttpStatus.FORBIDDEN.value()
+        );
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    /**
+     * <p><b>Ошибка: UserResetPasswordForbiddenException</b></p>
+     * <p><b>Описание: Не достаточно прав сброса пароля пользователя в системе<br>
+     * Возвращает HTTP 403 Forbidden</b></p>
+     *
+     * @param ex информация об ошибке
+     * @return ответ с кодом 403
+     */
+    @ExceptionHandler(UserResetPasswordForbiddenException.class)
+    public ResponseEntity<ErrorResponse> userResetPasswordForbiddenHandler(UserResetPasswordForbiddenException ex){
         ErrorResponse error = new ErrorResponse(
                 ex.getMessage(),
                 HttpStatus.FORBIDDEN.value()
@@ -246,7 +268,6 @@ public class GlobalExceptionHandler {
      * @param ex информация об ошибке
      * @return ответ с кодом 401
      */
-
     @ExceptionHandler(ExpiredJwtException.class)
     public ResponseEntity<ErrorResponse> expireJwtHandler(ExpiredJwtException ex) {
         ErrorResponse error = new ErrorResponse(
@@ -264,7 +285,6 @@ public class GlobalExceptionHandler {
      * @param ex информация об ошибке
      * @return ответ с кодом 401
      */
-
     @ExceptionHandler(SignatureException.class)
     public ResponseEntity<ErrorResponse> signatureHandler(SignatureException ex) {
         ErrorResponse error = new ErrorResponse(
@@ -282,7 +302,6 @@ public class GlobalExceptionHandler {
      * @param ex информация об ошибке
      * @return ответ с кодом 401
      */
-
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> illegalArgumentHandler(IllegalArgumentException ex) {
         ErrorResponse error = new ErrorResponse(
@@ -300,7 +319,6 @@ public class GlobalExceptionHandler {
      * @param ex информация об ошибке
      * @return ответ с кодом 401
      */
-
     @ExceptionHandler(MalformedJwtException.class)
     public ResponseEntity<ErrorResponse> malformedJwtHandler(MalformedJwtException ex) {
         ErrorResponse error = new ErrorResponse(
@@ -318,9 +336,25 @@ public class GlobalExceptionHandler {
      * @param ex информация об ошибке
      * @return ответ с кодом 400
      */
-
     @ExceptionHandler(NotCoincidencePasswordException.class)
     public ResponseEntity<ErrorResponse> notCoincidencePasswordHandler(NotCoincidencePasswordException ex){
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage(),
+                HttpStatus.BAD_REQUEST.value()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    /**
+     * <p><b>Ошибка: InvalidUserFirstNameException</b></p>
+     * <p><b>Описание: Возникает в результате попытке, назвать пользователя System<br>
+     * Возвращает HTTP 400 Bad request</b></p>
+     *
+     * @param ex информация об ошибке
+     * @return ответ с кодом 400
+     */
+    @ExceptionHandler(InvalidUserFirstNameException.class)
+    public ResponseEntity<ErrorResponse> invalidUserFirstNameHandler(InvalidUserFirstNameException ex){
         ErrorResponse error = new ErrorResponse(
                 ex.getMessage(),
                 HttpStatus.BAD_REQUEST.value()
@@ -336,7 +370,6 @@ public class GlobalExceptionHandler {
      * @param ex информация об ошибке
      * @return ответ с кодом 400
      */
-
     @ExceptionHandler(InvalidPasswordException.class)
     public ResponseEntity<ErrorResponse> invalidPasswordHandler(InvalidPasswordException ex){
         ErrorResponse error = new ErrorResponse(
