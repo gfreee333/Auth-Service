@@ -22,6 +22,7 @@ import ru.bank.auth_service.infrastructure.util.SimpleScrypt;
 import ru.bank.auth_service.model.dto.request.ChangePasswordRequestDto;
 import ru.bank.auth_service.model.dto.request.UpdateUserProfileRequestDto;
 import ru.bank.auth_service.model.dto.response.UserInformationDto;
+import ru.bank.auth_service.model.dto.response.UserIternalResponseDto;
 import ru.bank.auth_service.model.dto.response.UserProfileDto;
 import ru.bank.auth_service.model.entity.Users;
 import ru.bank.auth_service.model.enums.Role;
@@ -41,6 +42,19 @@ public class UserManagementService {
     private final PasswordEncoder passwordEncoder;
     private final RedisTokenStore redisTokenStore;
     private final OutboxEventStore outboxStore;
+
+
+    public UserIternalResponseDto getIternalUserInformation(UUID targetId){
+        Users user = usersRepository.findById(targetId)
+                .orElseThrow(() -> new UserNotFoundException("Пользователь с id: " + targetId + " не найден"));
+        return new UserIternalResponseDto(
+                user.getId(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getStatus(),
+                user.getEmail()
+        );
+    }
 
     /**
      * Получение детальной информации о всех пользователях в системе
