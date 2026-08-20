@@ -10,7 +10,6 @@ import ru.bank.auth_service.exception.custom.duplicate.DuplicateEmailException;
 import ru.bank.auth_service.exception.custom.duplicate.DuplicatePhoneException;
 import ru.bank.auth_service.exception.custom.user.InvalidUserFirstNameException;
 import ru.bank.auth_service.infrastructure.kafka.OutboxEvent;
-import ru.bank.auth_service.infrastructure.kafka.OutboxEventStore;
 import ru.bank.auth_service.infrastructure.util.PasswordGenerated;
 import ru.bank.auth_service.infrastructure.mapper.UsersMapper;
 import ru.bank.auth_service.infrastructure.util.SimpleScrypt;
@@ -18,6 +17,7 @@ import ru.bank.auth_service.model.dto.request.RegistrationRequestDto;
 import ru.bank.auth_service.model.dto.response.RegistrationResponseDto;
 import ru.bank.auth_service.model.entity.Users;
 import ru.bank.auth_service.repository.UsersRepository;
+import ru.bank.outbox_library.store.OutboxEventStore;
 
 import java.util.UUID;
 
@@ -28,7 +28,7 @@ public class RegistrationService {
 
     private final UsersRepository usersRepository;
     private final PasswordEncoder passwordEncoder;
-    private final OutboxEventStore eventStore;
+    private final OutboxEventStore outboxEventStore;
     private final UsersMapper usersMapper;
 
     // todo: Регистрация пользователя в системе
@@ -52,7 +52,7 @@ public class RegistrationService {
         Users savedUser = usersRepository.save(user);
         String encryptedPassword = SimpleScrypt.encrypt(tempPassword);
         OutboxEvent event = OutboxEvent.passwordEvent(savedUser, encryptedPassword);
-        eventStore.generate(event);
+        outboxEventStore.save(event, savedUser.getId());
         log.info("Пользователь: {} успешно создан пользователем: {} ", savedUser.getId(), createdBy);
         return usersMapper.toRegistrationResponse(user);
     }

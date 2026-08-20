@@ -14,7 +14,6 @@ import ru.bank.auth_service.exception.custom.user.UserChangeRoleException;
 import ru.bank.auth_service.exception.custom.user.UserDeleteForbiddenException;
 import ru.bank.auth_service.exception.custom.user.UserNotFoundException;
 import ru.bank.auth_service.infrastructure.kafka.OutboxEvent;
-import ru.bank.auth_service.infrastructure.kafka.OutboxEventStore;
 import ru.bank.auth_service.infrastructure.mapper.UsersMapper;
 import ru.bank.auth_service.infrastructure.storage.redis.RedisTokenStore;
 import ru.bank.auth_service.infrastructure.util.PasswordGenerated;
@@ -28,6 +27,7 @@ import ru.bank.auth_service.model.entity.Users;
 import ru.bank.auth_service.model.enums.Role;
 import ru.bank.auth_service.model.enums.UserStatus;
 import ru.bank.auth_service.repository.UsersRepository;
+import ru.bank.outbox_library.store.OutboxEventStore;
 
 import java.util.List;
 import java.util.UUID;
@@ -123,7 +123,7 @@ public class UserManagementService {
         redisTokenStore.addAllAccessTokenInBlackList(targetUserId);
         usersRepository.delete(user);
         OutboxEvent event = OutboxEvent.deleteUserEvent(user);
-        outboxStore.generate(event);
+        outboxStore.save(event, user.getId());
     }
 
 
@@ -146,7 +146,7 @@ public class UserManagementService {
         }
         Users saved = usersRepository.save(user);
         OutboxEvent event = OutboxEvent.blockedEvent(saved);
-        outboxStore.generate(event);
+        outboxStore.save(event, user.getId());
         redisTokenStore.addAllAccessTokenInBlackList(targetId);
         redisTokenStore.deleteAllRefreshToken(targetId);
 
@@ -166,7 +166,7 @@ public class UserManagementService {
         user.setStatus(UserStatus.PENDING);
         Users saved = usersRepository.save(user);
         OutboxEvent event = OutboxEvent.unblockedEvent(saved);
-        outboxStore.generate(event);
+        outboxStore.save(event, user.getId());
     }
 
     /**
@@ -222,7 +222,7 @@ public class UserManagementService {
         redisTokenStore.addAllAccessTokenInBlackList(myId);
         Users saved = usersRepository.save(user);
         OutboxEvent event = OutboxEvent.passwordChangeEvent(saved);
-        outboxStore.generate(event);
+        outboxStore.save(event, user.getId());
     }
 
     /**
@@ -262,7 +262,7 @@ public class UserManagementService {
         Users saved = usersRepository.save(user);
         String encryptedPassword = SimpleScrypt.encrypt(newPassword);
         OutboxEvent event = OutboxEvent.passwordEvent(saved, encryptedPassword);
-        outboxStore.generate(event);
+        outboxStore.save(event, user.getId());
         redisTokenStore.addAllAccessTokenInBlackList(targetId);
         redisTokenStore.deleteAllRefreshToken(targetId);
     }
