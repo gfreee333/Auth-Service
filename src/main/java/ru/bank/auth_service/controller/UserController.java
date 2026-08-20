@@ -57,7 +57,7 @@ public class UserController {
     @DeleteMapping("/delete/{targetId}")
     public ResponseEntity<Void> deleteUserById(
             @PathVariable("targetId") UUID targetId) {
-        Ugit submodule add https://github.com/gfreee333/Account-Service.git account-serviceUID currentId = userSecurityContext.getCurrentUserId();
+        UUID currentId = userSecurityContext.getCurrentUserId();
         userManagementService.deleteUserById(targetId, currentId);
         return ResponseEntity.noContent().build();
     }
