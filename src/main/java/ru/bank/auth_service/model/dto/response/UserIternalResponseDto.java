@@ -6,8 +6,6 @@ import java.util.UUID;
 
 public record UserIternalResponseDto(
         UUID userId,
-        String firstName,
-        String lastName,
         UserStatus status,
         String email
 ){}
