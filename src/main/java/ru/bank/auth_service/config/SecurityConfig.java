@@ -67,6 +67,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(List.of(
                 "http://localhost:8090",
                 "http://localhost:8092",
+                "http://localhost:8093",
                 "http://127.0.0.1:8090"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));

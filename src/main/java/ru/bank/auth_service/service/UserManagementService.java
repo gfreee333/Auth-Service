@@ -49,8 +49,6 @@ public class UserManagementService {
                 .orElseThrow(() -> new UserNotFoundException("Пользователь с id: " + targetId + " не найден"));
         return new UserIternalResponseDto(
                 user.getId(),
-                user.getFirstName(),
-                user.getLastName(),
                 user.getStatus(),
                 user.getEmail()
         );
